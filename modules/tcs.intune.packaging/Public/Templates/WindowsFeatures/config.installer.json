@@ -1,0 +1,8 @@
+{
+    "name": "##NAME_TEMPLATE",
+    "version": "##VERSION_TEMPLATE",
+    "configfile": "##REGISTRY_TEMPLATE",
+    "precommandfile": "Intune-Pre-Install.ps1",
+    "postcommandfile": "Intune-Post-Install.ps1",
+    "packagedby": "##PACKAGEDBY_TEMPLATE"
+}
