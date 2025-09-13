@@ -1,0 +1,13 @@
+{
+    "name": "##NAME_TEMPLATE",
+    "filename": "##FILENAME_TEMPLATE",
+    "version": "##VERSION_TEMPLATE",
+    "precommandfile": "Intune-Pre-Install.ps1",
+    "postcommandfile": "Intune-Post-Install.ps1",
+    "cli": false,
+    "includedfiles": "",
+    "shortcutname": "",
+    "shortcut": false,
+    "shortcutsubfolder": "",
+    "packagedby": ""
+}

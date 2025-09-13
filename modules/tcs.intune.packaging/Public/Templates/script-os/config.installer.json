@@ -1,0 +1,9 @@
+{
+    "name": "##NAME_TEMPLATE",
+    "version": "##VERSION_TEMPLATE",
+    "configfile": "",
+    "precommandfile": "Intune-Pre-Install.ps1",
+    "postcommandfile": "Intune-Post-Install.ps1",
+    "includedfiles": "",
+    "packagedby": ""
+}

@@ -1,0 +1,11 @@
+{
+    "name": "##NAME_TEMPLATE",
+    "launchername": "##LAUNCHERNAME_TEMPLATE",
+    "launcherrelativepath": "##LAUNCHERRELATIVEPATH_TEMPLATE",
+    "version": "##VERSION_TEMPLATE",
+    "includedfiles": "",
+    "precommandfile": "Intune-Pre-Install.ps1",
+    "postcommandfile": "Intune-Post-Install.ps1",
+    "shortcut": false,
+    "CreatedShortcuts": ""
+}

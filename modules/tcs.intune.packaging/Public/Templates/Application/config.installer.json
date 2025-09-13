@@ -1,0 +1,14 @@
+{
+    "name": "##NAME_TEMPLATE",
+    "filename": "##FILENAME_TEMPLATE",
+    "installswitches": "##INSTALLSWITCHES_TEMPLATE",
+    "uninstallswitches": "##UNINSTALLSWITCHES_TEMPLATE",
+    "includedfiles": "",
+    "uninstallpath": "##UNINSTALLPATH_TEMPLATE",
+    "version": "##VERSION_TEMPLATE",
+    "precommandfile": "Intune-Pre-Install.ps1",
+    "postcommandfile": "Intune-Post-Install.ps1",
+	"target": "##TARGET_TEMPLATE",
+    "shortcut": false,
+    "CreatedShortcuts": ""
+}
