@@ -2,6 +2,59 @@
 #Requires -Modules Microsoft.Graph.Authentication, Microsoft.Graph.Devices.CorporateManagement
 
 function New-IntuneWin32Application {
+    <#
+    .SYNOPSIS
+        Creates or clones a Win32 application in Microsoft Intune.
+
+    .DESCRIPTION
+        The New-IntuneWin32Application function creates a new Win32 application in Microsoft Intune or clones
+        an existing application. It supports creating applications from scratch or duplicating existing ones
+        with modified properties using Microsoft Graph API.
+
+    .PARAMETER Name
+        The display name of the application.
+
+    .PARAMETER Description
+        A description of the application and its purpose.
+
+    .PARAMETER Version
+        The version number of the application.
+
+    .PARAMETER Publisher
+        The publisher or vendor of the application.
+
+    .PARAMETER Owner
+        The owner or responsible party for the application.
+
+    .PARAMETER Developer
+        The developer or creator of the application.
+
+    .PARAMETER Notes
+        Additional notes or information about the application.
+
+    .PARAMETER PrivacyInformationUrl
+        URL to the application's privacy information or policy.
+
+    .PARAMETER InformationUrl
+        URL to additional information about the application.
+
+    .PARAMETER IsFeatured
+        Boolean indicating whether the application should be featured in the Company Portal.
+
+    .EXAMPLE
+        New-IntuneWin32Application -Name "MyApp" -Description "My Application" -Version "1.0.0" -Publisher "Contoso" -Owner "IT Admin" -Developer "Dev Team"
+        
+        Creates a new Win32 application in Intune.
+
+    .EXAMPLE
+        New-IntuneWin32Application -Name "MyApp v2" -Version "2.0.0" -CloneExistingPackage
+        
+        Clones an existing application with a new version.
+
+    .NOTES
+        Requires PowerShell Core and the Microsoft.Graph.Authentication and Microsoft.Graph.Devices.CorporateManagement modules.
+        Must be connected to Microsoft Graph with appropriate permissions before running this function.
+    #>
     [CmdletBinding()]
     [CmdletBinding(DefaultParameterSetName = 'NewPackage')]
     param (

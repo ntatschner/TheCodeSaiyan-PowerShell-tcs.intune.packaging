@@ -1,4 +1,42 @@
 function New-PackageJSON {
+    <#
+    .SYNOPSIS
+        Creates a package JSON metadata file for an application deployment.
+
+    .DESCRIPTION
+        The New-PackageJSON function generates a JSON file containing package metadata including
+        package name, version, description, author, main installer filename, and a list of all files
+        in the source directory. This metadata file can be used for tracking and deployment purposes.
+
+    .PARAMETER PackageName
+        The name of the application package.
+
+    .PARAMETER Version
+        The version number of the package.
+
+    .PARAMETER Description
+        A description of the package and its contents.
+
+    .PARAMETER Author
+        The author or creator of the package.
+
+    .PARAMETER SourceDirectory
+        The directory path containing the application files to be inventoried.
+
+    .PARAMETER MainInstaller
+        The filename of the main installer executable or MSI file.
+
+    .EXAMPLE
+        New-PackageJSON -PackageName "MyApp" -Version "1.0.0" -Description "My Application" -Author "IT Team" -SourceDirectory "C:\Apps\MyApp" -MainInstaller "setup.exe"
+        
+        Creates a JSON metadata file for MyApp in the source directory.
+
+    .OUTPUTS
+        Creates a JSON file named "package-{PackageName}-v{Version}.json" in the source directory.
+
+    .NOTES
+        The function automatically inventories all files in the source directory and includes them in the JSON metadata.
+    #>
     param (
         [Parameter(Mandatory)]
         [string]

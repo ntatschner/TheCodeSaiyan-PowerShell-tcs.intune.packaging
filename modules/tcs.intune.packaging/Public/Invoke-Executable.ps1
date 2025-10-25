@@ -1,4 +1,47 @@
 function Invoke-Executable {
+    <#
+    .SYNOPSIS
+        Invokes an executable file with specified parameters and captures its output.
+
+    .DESCRIPTION
+        The Invoke-Executable function runs an executable file with customizable process settings.
+        It provides control over standard output/error redirection, window creation, and shell execution.
+        The function waits for the process to complete and returns the exit code along with any captured output.
+
+    .PARAMETER FilePath
+        The file name or path of the executable to be invoked, including the extension.
+
+    .PARAMETER Arguments
+        Arguments that will be passed to the executable.
+
+    .PARAMETER RedirectStandardOutput
+        Specifies whether standard output should be redirected. Default is $true.
+
+    .PARAMETER RedirectStandardError
+        Specifies whether standard error output should be redirected. Default is $true.
+
+    .PARAMETER CreateNoWindow
+        Specifies whether to create a new window for the executable. Default is $true.
+
+    .PARAMETER UseShellExecute
+        Specifies whether to use the operating system shell to start the process. Default is $false.
+
+    .EXAMPLE
+        Invoke-Executable -FilePath "setup.exe" -Arguments "/silent /norestart"
+        
+        Runs setup.exe with silent installation parameters.
+
+    .EXAMPLE
+        $result = Invoke-Executable -FilePath "C:\Tools\mytool.exe" -Arguments "-config test.json" -CreateNoWindow $false
+        
+        Runs mytool.exe with a visible window and captures the result.
+
+    .OUTPUTS
+        Returns an object containing the exit code and any standard output/error from the executable.
+
+    .NOTES
+        When RedirectStandardOutput or RedirectStandardError is set to $true, UseShellExecute must be $false.
+    #>
     param(
         [parameter(Mandatory = $true, HelpMessage = "Specify the file name or path of the executable to be invoked, including the extension.")]
         [ValidateNotNullOrEmpty()]

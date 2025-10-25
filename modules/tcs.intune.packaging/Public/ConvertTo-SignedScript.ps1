@@ -1,4 +1,36 @@
 function ConvertTo-SignedScript {
+    <#
+    .SYNOPSIS
+        Signs PowerShell script files with a PFX certificate.
+
+    .DESCRIPTION
+        The ConvertTo-SignedScript function signs PowerShell script files (.ps1, .psm1, .psd1) using a specified PFX certificate file.
+        This function validates that the input files are PowerShell scripts and that the certificate file is valid before signing.
+
+    .PARAMETER Path
+        The path to one or more PowerShell script files to sign. Accepts pipeline input.
+        Validates that files exist, have valid extensions (.ps1, .psm1, .psd1), and contain content.
+
+    .PARAMETER CertificateFile
+        The path to the PFX certificate file used for signing.
+        Must be a valid .pfx file that exists and contains data.
+
+    .PARAMETER Password
+        The password for the PFX certificate file as a SecureString.
+
+    .EXAMPLE
+        ConvertTo-SignedScript -Path "C:\Scripts\MyScript.ps1" -CertificateFile "C:\Certs\MyCert.pfx" -Password (ConvertTo-SecureString "MyPassword" -AsPlainText -Force)
+        
+        Signs the specified PowerShell script with the provided certificate.
+
+    .EXAMPLE
+        Get-ChildItem -Path "C:\Scripts\*.ps1" | ConvertTo-SignedScript -CertificateFile "C:\Certs\MyCert.pfx" -Password $securePass
+        
+        Signs all PowerShell scripts in the specified directory using pipeline input.
+
+    .NOTES
+        The certificate must be valid for code signing and trusted on the system where the scripts will run.
+    #>
     [CmdletBinding()]
     param (
         [parameter(Mandatory, ValueFromPipeline, ValueFromPipelineByPropertyName)]

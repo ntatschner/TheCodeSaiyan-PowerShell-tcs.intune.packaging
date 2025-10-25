@@ -1,4 +1,41 @@
 function New-Win32Rule {
+    <#
+    .SYNOPSIS
+        Creates detection or requirement rules for Intune Win32 applications.
+
+    .DESCRIPTION
+        The New-Win32Rule function generates rule objects that define detection logic or system requirements
+        for Win32 applications in Microsoft Intune. It supports file/folder checks, registry checks,
+        script-based detection, and MSI product code detection.
+
+    .PARAMETER RuleParentType
+        The parent type of rule to create: 'detection' or 'requirement'.
+
+    .PARAMETER RuleType
+        The type of rule to create: 'FileOrFolder', 'Registry', 'Script', or 'MSI'.
+
+    .EXAMPLE
+        New-Win32Rule -RuleParentType 'detection' -RuleType 'FileOrFolder' -Path "C:\Program Files\MyApp" -FileOrFolderName "MyApp.exe" -OperationType "exists"
+        
+        Creates a file existence detection rule.
+
+    .EXAMPLE
+        New-Win32Rule -RuleParentType 'detection' -RuleType 'Registry' -Path "HKLM:\Software\MyApp" -ValueName "Version" -OperationType "string" -Operator "equal" -ComparisonValue "1.0"
+        
+        Creates a registry value detection rule.
+
+    .EXAMPLE
+        New-Win32Rule -RuleParentType 'requirement' -RuleType 'Script' -ScriptFile "C:\Scripts\check.ps1"
+        
+        Creates a script-based requirement rule.
+
+    .OUTPUTS
+        Hashtable containing the rule configuration.
+
+    .NOTES
+        This function uses dynamic parameters based on the RuleType selected.
+        Different rule types require different parameters to be specified.
+    #>
     [CmdletBinding()]
     [OutputType([Hashtable])]
     param (
