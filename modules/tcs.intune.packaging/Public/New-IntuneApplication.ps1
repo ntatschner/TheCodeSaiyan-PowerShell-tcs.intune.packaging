@@ -1,4 +1,62 @@
 function New-IntuneApplication {
+    <#
+    .SYNOPSIS
+        Creates a new Intune application package with all necessary files and configurations.
+
+    .DESCRIPTION
+        The New-IntuneApplication function creates a complete Intune application package by generating
+        the required folder structure, copying source files, creating detection scripts, and preparing
+        all necessary configuration files for deployment.
+
+    .PARAMETER ApplicationName
+        The name of the application to be packaged.
+
+    .PARAMETER SourceFiles
+        Array of paths to the source files that will be included in the application package.
+
+    .PARAMETER MainInstallerFileName
+        The filename of the main installer executable or MSI file.
+
+    .PARAMETER OutputFolder
+        The folder where the application package will be created. Default is the current directory.
+
+    .PARAMETER Description
+        A description of the application. Default includes ApplicationName, Publisher, Version, Developer, and notes.
+
+    .PARAMETER Publisher
+        The publisher of the application. Default is the current username.
+
+    .PARAMETER Version
+        The version of the application. Default is "1.0".
+
+    .PARAMETER Developer
+        The developer of the application. Default is the current username.
+
+    .PARAMETER owner
+        The owner of the application.
+
+    .PARAMETER notes
+        Additional notes about the application.
+
+    .PARAMETER LogoPath
+        Path to the application logo image file. Must be a PNG, JPG, or JPEG file.
+
+    .PARAMETER InstallFor
+        Specifies the installation context: "User" or "System". Default is "System".
+
+    .EXAMPLE
+        New-IntuneApplication -ApplicationName "MyApp" -SourceFiles "C:\Source\*" -MainInstallerFileName "setup.exe"
+        
+        Creates an Intune application package for MyApp in the current directory.
+
+    .EXAMPLE
+        New-IntuneApplication -ApplicationName "MyApp" -SourceFiles "C:\Source\installer.msi", "C:\Source\config.xml" -MainInstallerFileName "installer.msi" -OutputFolder "C:\Packages" -Version "2.1" -LogoPath "C:\Images\logo.png"
+        
+        Creates an Intune application package with specific version and logo.
+
+    .OUTPUTS
+        PSObject containing information about the created application package.
+    #>
     [CmdletBinding()]
     [OutputType([PSObject])]
     param(

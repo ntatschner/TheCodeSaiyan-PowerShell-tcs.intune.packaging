@@ -1,4 +1,56 @@
 function New-ApplicationDeploymentGroups {
+    <#
+    .SYNOPSIS
+        Creates security groups for application deployment in Intune.
+
+    .DESCRIPTION
+        The New-ApplicationDeploymentGroups function generates security group names for managing application deployments
+        in Intune. It can create groups for different deployment scenarios (Available, Required, Test, Phase1) and
+        optionally create them in Azure AD or export them to a CSV file.
+
+    .PARAMETER ApplicationName
+        The name(s) of the application(s) for which to create deployment groups. Multiple names can be provided.
+
+    .PARAMETER CreateGroups
+        Switch to create the groups in Azure AD.
+
+    .PARAMETER CreateFile
+        Switch to export the group list to a CSV file.
+
+    .PARAMETER Destination
+        The destination folder path for the CSV file when using -CreateFile. Must be a valid container path.
+
+    .PARAMETER AdminUnitId
+        The Administrative Unit ID in Azure AD where groups should be created.
+
+    .PARAMETER AvailableMembers
+        Array of member IDs to add to the Available deployment groups.
+
+    .PARAMETER RequiredMembers
+        Array of member IDs to add to the Required deployment groups.
+
+    .PARAMETER TestMembers
+        Array of member IDs to add to the Test deployment groups.
+
+    .PARAMETER Phase1Members
+        Array of member IDs to add to the Phase1 deployment groups.
+
+    .EXAMPLE
+        New-ApplicationDeploymentGroups -ApplicationName "Microsoft 365 Apps" -CreateGroups
+        
+        Creates security groups in Azure AD for Microsoft 365 Apps deployment.
+
+    .EXAMPLE
+        New-ApplicationDeploymentGroups -ApplicationName "Adobe Reader", "Google Chrome" -CreateFile -Destination "C:\Output"
+        
+        Generates a CSV file with group names for Adobe Reader and Google Chrome.
+
+    .OUTPUTS
+        PSObject containing the generated group information.
+
+    .LINK
+        https://PENDIINGHOST/tcs.intune.packaging/docs/New-APFDeployment.html
+    #>
     [CmdletBinding(SupportsShouldProcess, HelpUri = 'https://PENDIINGHOST/tcs.intune.packaging/docs/New-APFDeployment.html')]
     [OutputType([psobject])]
     [OutputType([psobject], ParameterSetName = "file")]

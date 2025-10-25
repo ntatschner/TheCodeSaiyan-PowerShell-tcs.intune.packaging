@@ -1,4 +1,56 @@
 function New-APFDeployment {
+    <#
+    .SYNOPSIS
+        Creates an Application Packaging Framework (APF) deployment package for Intune.
+
+    .DESCRIPTION
+        The New-APFDeployment function creates a deployment package that can be used with the Application Packaging Framework
+        to deploy applications to Intune-managed devices. It generates the necessary configuration files and scripts
+        for deploying MSI or EXE installers.
+
+    .PARAMETER Name
+        The name of the application. If not provided, the script will attempt to extract it from the installer file.
+        Aliases: ApplicationName, AppName
+
+    .PARAMETER Version
+        The version of the application in the format x.x.x.x. If not provided, the script will attempt to extract it from the installer file.
+        Aliases: ApplicationVersion, AppVersion
+
+    .PARAMETER Target
+        The target context for the deployment: 'system' or 'user'. Default is 'system'.
+
+    .PARAMETER InstallSwitches
+        The command-line switches to use when installing the application.
+
+    .PARAMETER UninstallSwitches
+        The command-line switches to use when uninstalling the application.
+
+    .PARAMETER UninstallPath
+        The path to the uninstall executable or file.
+
+    .PARAMETER Path
+        The path to the installer file (.msi or .exe). This is a mandatory parameter.
+        Aliases: InstallerFile, SourceFile
+
+    .PARAMETER IncludedFiles
+        Paths to any additional files that need to be included in the installation package.
+
+    .EXAMPLE
+        New-APFDeployment -Path "C:\Installers\MyApp.msi" -Name "MyApp" -Version "1.0.0.0"
+        
+        Creates an APF deployment package for MyApp version 1.0.0.0.
+
+    .EXAMPLE
+        New-APFDeployment -Path "C:\Installers\Setup.exe" -InstallSwitches "/S" -UninstallSwitches "/U"
+        
+        Creates an APF deployment package with custom install and uninstall switches.
+
+    .NOTES
+        Only MSI and EXE installer files are supported.
+        
+    .LINK
+        https://PENDIINGHOST/tcs.intune.packaging/docs/New-APFDeployment.html
+    #>
     param(
         [CmdletBinding(SupportsShouldProcess, HelpUri = 'https://PENDIINGHOST/tcs.intune.packaging/docs/New-APFDeployment.html')]
         [OutputType([string])]

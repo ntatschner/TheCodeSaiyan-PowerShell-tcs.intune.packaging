@@ -1,0 +1,103 @@
+name: Generate PowerShell Documentation
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'modules/**/*.ps1'
+      - 'modules/**/*.psm1'
+      - 'modules/**/*.psd1'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'modules/**/*.ps1'
+      - 'modules/**/*.psm1'
+      - 'modules/**/*.psd1'
+  workflow_dispatch:
+
+jobs:
+  generate-docs:
+    runs-on: windows-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install PlatyPS
+        shell: pwsh
+        run: |
+          Install-Module -Name PlatyPS -Force -Scope CurrentUser -AllowClobber
+          Import-Module PlatyPS
+
+      - name: Import Module
+        shell: pwsh
+        run: |
+          Import-Module .\modules\tcs.intune.packaging\tcs.intune.packaging.psd1 -Force
+
+      - name: Generate Markdown Documentation
+        shell: pwsh
+        run: |
+          $moduleName = "tcs.intune.packaging"
+          $docsPath = ".\docs"
+          
+          # Create docs directory if it doesn't exist
+          if (-not (Test-Path $docsPath)) {
+            New-Item -Path $docsPath -ItemType Directory -Force
+          }
+          
+          # Generate markdown help files
+          New-MarkdownHelp -Module $moduleName -OutputFolder $docsPath -Force
+          
+          # Generate module page
+          New-MarkdownAboutHelp -OutputFolder $docsPath -AboutName $moduleName
+
+      - name: Update Documentation
+        shell: pwsh
+        run: |
+          $docsPath = ".\docs"
+          $moduleName = "tcs.intune.packaging"
+          
+          # Update existing markdown files if they exist
+          if (Test-Path $docsPath) {
+            Update-MarkdownHelpModule -Path $docsPath -RefreshModulePage
+          }
+
+      - name: Generate External Help
+        shell: pwsh
+        run: |
+          $docsPath = ".\docs"
+          $modulePath = ".\modules\tcs.intune.packaging"
+          $locale = "en-US"
+          
+          # Create locale directory in module
+          $helpPath = Join-Path $modulePath $locale
+          if (-not (Test-Path $helpPath)) {
+            New-Item -Path $helpPath -ItemType Directory -Force
+          }
+          
+          # Generate external help XML file
+          New-ExternalHelp -Path $docsPath -OutputPath $helpPath -Force
+
+      - name: Commit and Push Documentation
+        shell: pwsh
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          
+          git add docs/
+          git add modules/tcs.intune.packaging/en-US/
+          
+          # Check if there are changes to commit
+          $changes = git status --porcelain
+          if ($changes) {
+            git commit -m "docs: Auto-generate PowerShell documentation [skip ci]"
+            git push
+          } else {
+            Write-Host "No documentation changes to commit"
+          }
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

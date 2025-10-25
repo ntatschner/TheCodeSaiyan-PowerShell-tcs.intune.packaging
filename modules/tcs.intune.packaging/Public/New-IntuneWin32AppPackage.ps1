@@ -1,4 +1,46 @@
-function New-IntuneWin32AppPackage {    
+function New-IntuneWin32AppPackage {
+    <#
+    .SYNOPSIS
+        Creates an Intune Win32 application package (.intunewin file) from source files.
+
+    .DESCRIPTION
+        The New-IntuneWin32AppPackage function wraps application source files and the main setup file
+        into an encrypted .intunewin package using Microsoft's IntuneWinAppUtil.exe tool. This package
+        can then be uploaded to Microsoft Intune for Win32 app deployment.
+
+    .PARAMETER SourceFolder
+        The full path to the source folder containing the setup file and all dependency files.
+
+    .PARAMETER SetupFile
+        The complete setup file name including extension (e.g., Setup.exe or Installer.msi).
+
+    .PARAMETER OutputFolder
+        The full path to the output folder where the packaged .intunewin file will be saved.
+
+    .PARAMETER Force
+        Switch to overwrite an existing .intunewin file if already present in the output folder.
+
+    .PARAMETER IntuneWinAppUtilPath
+        The full path to the IntuneWinAppUtil.exe file. If not specified or not found,
+        the tool will be automatically downloaded to the temporary folder.
+
+    .EXAMPLE
+        New-IntuneWin32AppPackage -SourceFolder "C:\Apps\MyApp" -SetupFile "setup.exe" -OutputFolder "C:\Packages"
+        
+        Creates an .intunewin package from the MyApp folder.
+
+    .EXAMPLE
+        New-IntuneWin32AppPackage -SourceFolder "C:\Apps\MyApp" -SetupFile "installer.msi" -OutputFolder "C:\Packages" -Force
+        
+        Creates an .intunewin package and overwrites any existing package in the output folder.
+
+    .NOTES
+        The IntuneWinAppUtil.exe tool will be automatically downloaded if not found at the specified path.
+        The source folder should contain all files required for the application installation.
+
+    .LINK
+        https://github.com/microsoft/Microsoft-Win32-Content-Prep-Tool
+    #>    
     [CmdletBinding(SupportsShouldProcess = $true)]
     param(
         [parameter(Mandatory = $true, HelpMessage = "Specify the full path of the source folder where the setup file and all of it's potential dependency files reside.")]
