@@ -43,6 +43,12 @@ jobs:
           
           # Install custom required modules from PSGallery
           Install-Module -Name tcs.core -Force -Scope CurrentUser -AllowClobber
+          
+          # Import required modules to ensure they're loaded
+          Import-Module -Name tcs.core -Force
+          Import-Module -Name Microsoft.Graph.Authentication -Force
+          Import-Module -Name Microsoft.Graph.Devices.CorporateManagement -Force
+          Import-Module -Name Microsoft.Graph.Intune -Force
 
       - name: Import Module
         shell: pwsh
