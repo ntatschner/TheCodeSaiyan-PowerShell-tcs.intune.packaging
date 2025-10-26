@@ -33,6 +33,18 @@ jobs:
           Install-Module -Name PlatyPS -Force -Scope CurrentUser -AllowClobber
           Import-Module PlatyPS
 
+      - name: Install Required Modules from PSGallery
+        shell: pwsh
+        run: |
+          # Install Microsoft Graph modules
+          Install-Module -Name Microsoft.Graph.Authentication -Force -Scope CurrentUser -AllowClobber
+          Install-Module -Name Microsoft.Graph.Devices.CorporateManagement -Force -Scope CurrentUser -AllowClobber
+          Install-Module -Name Microsoft.Graph.Intune -Force -Scope CurrentUser -AllowClobber
+          
+          # Install any other required modules from PSGallery
+          # Add your published modules here
+          # Install-Module -Name YourModuleName -Force -Scope CurrentUser -AllowClobber
+
       - name: Import Module
         shell: pwsh
         run: |
