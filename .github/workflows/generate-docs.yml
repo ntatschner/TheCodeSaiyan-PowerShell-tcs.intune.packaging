@@ -75,6 +75,33 @@ jobs:
       - name: Generate Markdown Documentation
         shell: pwsh
         run: |
+          # Re-import PlatyPS in this session
+          Import-Module PlatyPS -Force
+          
+          # Re-import tcs.core
+          Import-Module -Name tcs.core -Force
+          
+          # Create stub functions for missing tcs.core functions (for doc generation only)
+          if (-not (Get-Command Get-ModuleConfig -ErrorAction SilentlyContinue)) {
+            Write-Host "Creating stub Get-ModuleConfig function for documentation generation"
+            function global:Get-ModuleConfig { param($CommandPath) return @{ModuleName='tcs.intune.packaging'; ModulePath=''; BasicTelemetry='False'} }
+          }
+          if (-not (Get-Command Invoke-TelemetryCollection -ErrorAction SilentlyContinue)) {
+            Write-Host "Creating stub Invoke-TelemetryCollection function for documentation generation"
+            function global:Invoke-TelemetryCollection { param([hashtable]$TelemetryArgs, [string]$Stage, [switch]$ClearTimer, [switch]$Failed, $Exception, [switch]$Minimal) }
+          }
+          
+          # Re-import the main module in this session
+          Write-Host "Importing tcs.intune.packaging in documentation generation session..."
+          Import-Module .\modules\tcs.intune.packaging\tcs.intune.packaging.psd1 -Force
+          
+          # Verify module is loaded
+          $module = Get-Module -Name tcs.intune.packaging
+          if (-not $module) {
+            throw "Module tcs.intune.packaging is not loaded"
+          }
+          Write-Host "Module loaded with $($module.ExportedFunctions.Count) functions"
+          
           $moduleName = "tcs.intune.packaging"
           $docsPath = ".\docs"
           
@@ -84,14 +111,19 @@ jobs:
           }
           
           # Generate markdown help files
+          Write-Host "Generating markdown help files..."
           New-MarkdownHelp -Module $moduleName -OutputFolder $docsPath -Force
           
           # Generate module page
+          Write-Host "Generating module about page..."
           New-MarkdownAboutHelp -OutputFolder $docsPath -AboutName $moduleName
 
       - name: Update Documentation
         shell: pwsh
         run: |
+          # Re-import PlatyPS
+          Import-Module PlatyPS -Force
+          
           $docsPath = ".\docs"
           $moduleName = "tcs.intune.packaging"
           
@@ -103,6 +135,9 @@ jobs:
       - name: Generate External Help
         shell: pwsh
         run: |
+          # Re-import PlatyPS
+          Import-Module PlatyPS -Force
+          
           $docsPath = ".\docs"
           $modulePath = ".\modules\tcs.intune.packaging"
           $locale = "en-US"
