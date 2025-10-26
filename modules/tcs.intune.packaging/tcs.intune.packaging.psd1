@@ -8,7 +8,7 @@
     Description          = 'A set of functions designed to package and deploy Application packages to Microsoft Intune.'
     PowerShellVersion    = '5.1'
     RequiredModules      = @(
-        @{ ModuleName     = 'rsy.core'
+        @{ ModuleName     = 'tcs.core'
             ModuleVersion = '0.1.1' 
         }
     )
