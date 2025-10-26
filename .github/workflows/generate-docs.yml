@@ -41,9 +41,8 @@ jobs:
           Install-Module -Name Microsoft.Graph.Devices.CorporateManagement -Force -Scope CurrentUser -AllowClobber
           Install-Module -Name Microsoft.Graph.Intune -Force -Scope CurrentUser -AllowClobber
           
-          # Install any other required modules from PSGallery
-          # Add your published modules here
-          # Install-Module -Name YourModuleName -Force -Scope CurrentUser -AllowClobber
+          # Install custom required modules from PSGallery
+          Install-Module -Name rsy.core -Force -Scope CurrentUser -AllowClobber
 
       - name: Import Module
         shell: pwsh
