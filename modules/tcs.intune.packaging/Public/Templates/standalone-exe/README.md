@@ -20,7 +20,7 @@ This framework is designed to be flexible and can be customized to fit the needs
 
 The scripts and configuration file in this framework generate several outputs that can be used to monitor and troubleshoot the application packaging process:
 
-- **Log Files**: The scripts generate log files that provide detailed information about each step of the installation and uninstallation process. These log files can be used to troubleshoot issues with the application packaging process. There is a function called **Write-RSYLog** (`Write-DeploymentLog.ps1`) being used throughout the framework, when editing the Pre-Install and Post-Install scripts make sure to use that for your logging.
+- **Log Files**: The scripts generate log files that provide detailed information about each step of the installation and uninstallation process. These log files can be used to troubleshoot issues with the application packaging process. There is a function called **Write-Log** (`Write-DeploymentLog.ps1`) being used throughout the framework, when editing the Pre-Install and Post-Install scripts make sure to use that for your logging.
 
 - **Version Info File**: The `Intune-D-AppDetection.ps1` script checks for the presence of a version info file to determine if the application is installed. This file is typically created during the installation process and contains the version number of the installed application.
 

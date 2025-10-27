@@ -3,7 +3,7 @@
     CompatiblePSEditions = @('Desktop')
     GUID                 = 'bfe12388-5f86-4da1-b08b-a439ff6f690c'
     Author               = 'Nigel Tatschner'
-    CompanyName          = 'Rothesay'
+    CompanyName          = 'TheCodeSaiyan'
     Copyright            = '(c) 2024 Nigel Tatschner. All rights reserved.'
     Description          = 'A set of functions designed to package and deploy Application packages to Microsoft Intune.'
     PowerShellVersion    = '5.1'

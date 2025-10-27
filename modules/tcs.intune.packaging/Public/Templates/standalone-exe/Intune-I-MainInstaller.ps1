@@ -20,7 +20,7 @@ $InvalidChars | % { $LogName = $LogName -replace [regex]::Escape($_), "" }
 $LoggingPath = Join-Path -Path (Join-Path -Path $ConfigBase -ChildPath "\$APFBase\UserLogs\") -ChildPath $LogName
 $ExistingConfig = $false
 $StartTime = Get-Date
-$StartMenuShortcutBase = Join-Path -Path "$env:ALLUSERSPROFILE\Microsoft\Windows\Start Menu\Programs" -ChildPath "Rothesay"
+$StartMenuShortcutBase = Join-Path -Path "$env:ALLUSERSPROFILE\Microsoft\Windows\Start Menu\Programs" -ChildPath "TheCodeSaiyan"
 if ([string]::IsNullOrEmpty($InstallConfig.shortcutsubfolder) -eq $false) {
     $StartMenuShortcutBase = Join-Path -Path $StartMenuShortcutBase -ChildPath $($InstallConfig.shortcutsubfolder)
 }
