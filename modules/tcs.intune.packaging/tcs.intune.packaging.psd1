@@ -17,6 +17,8 @@
     CmdletsToExport      = '*'
     VariablesToExport    = '*'
     AliasesToExport      = '*'
+    # ScriptsToProcess ensures classes are loaded before the module
+    ScriptsToProcess     = @('Classes\intune.package.ps1')
     PrivateData          = @{
         PSData = @{
             Tags                       = @('Intune', 'Packaging', 'Deployment', 'Applications')
