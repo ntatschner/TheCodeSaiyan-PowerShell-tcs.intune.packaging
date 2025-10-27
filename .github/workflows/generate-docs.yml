@@ -27,13 +27,25 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Cache PowerShell Modules
+        id: cache-modules
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~\Documents\PowerShell\Modules
+            C:\Users\runneradmin\Documents\PowerShell\Modules
+          key: ${{ runner.os }}-pwsh-modules-${{ hashFiles('**/tcs.intune.packaging.psd1') }}
+          restore-keys: |
+            ${{ runner.os }}-pwsh-modules-
+
       - name: Install PlatyPS
+        if: steps.cache-modules.outputs.cache-hit != 'true'
         shell: pwsh
         run: |
           Install-Module -Name PlatyPS -Force -Scope CurrentUser -AllowClobber
-          Import-Module PlatyPS
 
-      - name: Install and Import Dependencies
+      - name: Install Required Modules
+        if: steps.cache-modules.outputs.cache-hit != 'true'
         shell: pwsh
         run: |
           # Install Microsoft Graph modules
@@ -45,6 +57,12 @@ jobs:
           # Install custom required modules from PSGallery
           Write-Host "Installing tcs.core module..."
           Install-Module -Name tcs.core -Force -Scope CurrentUser -AllowClobber
+
+      - name: Import and Setup Dependencies
+        shell: pwsh
+        run: |
+          # Import PlatyPS
+          Import-Module PlatyPS -Force
           
           # Import all required modules
           Write-Host "Importing tcs.core..."
