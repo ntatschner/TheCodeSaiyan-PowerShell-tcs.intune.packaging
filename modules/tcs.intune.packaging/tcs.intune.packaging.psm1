@@ -1,3 +1,17 @@
+#region Load Classes First (must be loaded before functions that use them)
+$Classes = @(
+    Get-ChildItem -Path $PSScriptRoot\Classes\*.ps1 -ErrorAction SilentlyContinue
+)
+foreach ($Class in $Classes) {
+    try {
+        . $Class.FullName
+    }
+    catch {
+        Write-Error -Message "Failed to import class at $($Class.FullName): $_"
+    }
+}
+#endregion
+
 #region get public and private function definition files.
 $Public = @(
     Get-ChildItem -Path $PSScriptRoot\Public\*.ps1 -Exclude "*.Tests.ps1" -ErrorAction SilentlyContinue
@@ -5,13 +19,10 @@ $Public = @(
 $Private = @(
     Get-ChildItem -Path $PSScriptRoot\Private\*.ps1 -Exclude "*.Tests.ps1" -ErrorAction SilentlyContinue
 )
-$Classes = @(
-    Get-ChildItem -Path $PSScriptRoot\Classes\*.ps1 -ErrorAction SilentlyContinue
-)
 #endregion
 
 #region source the files
-foreach ($Function in @($Public + $Private + $Classes)) {
+foreach ($Function in @($Public + $Private)) {
     $FunctionPath = $Function.fullname
     try {
         . $FunctionPath # dot source function
@@ -34,6 +45,21 @@ $Time = Get-Date -UFormat "%H:%M:%S"
 
 #region export Public functions ($Public.BaseName) for WIP modules
 Export-ModuleMember -Function $Public.Basename
+#endregion
+
+#region export Classes
+# Export classes to make them available to module consumers
+$ClassNames = $Classes | ForEach-Object { 
+    $content = Get-Content $_.FullName -Raw
+    if ($content -match 'Class\s+(\w+)') {
+        $matches[1]
+    }
+}
+if ($ClassNames) {
+    foreach ($ClassName in $ClassNames) {
+        Export-ModuleMember -Variable $ClassName -ErrorAction SilentlyContinue
+    }
+}
 #endregion
 
 # Module Config setup and import
