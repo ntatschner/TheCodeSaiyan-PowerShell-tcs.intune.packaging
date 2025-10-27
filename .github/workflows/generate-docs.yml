@@ -142,11 +142,34 @@ jobs:
           # Re-import PlatyPS
           Import-Module PlatyPS -Force
           
+          # Re-import tcs.core
+          Import-Module -Name tcs.core -Force
+          
+          # Create stub functions for missing tcs.core functions
+          if (-not (Get-Command Get-ModuleConfig -ErrorAction SilentlyContinue)) {
+            function global:Get-ModuleConfig { param($CommandPath) return @{ModuleName='tcs.intune.packaging'; ModulePath=''; BasicTelemetry='False'} }
+          }
+          if (-not (Get-Command Invoke-TelemetryCollection -ErrorAction SilentlyContinue)) {
+            function global:Invoke-TelemetryCollection { param([hashtable]$TelemetryArgs, [string]$Stage, [switch]$ClearTimer, [switch]$Failed, $Exception, [switch]$Minimal) }
+          }
+          
+          # Re-import the main module
+          Write-Host "Importing tcs.intune.packaging for update step..."
+          Import-Module .\modules\tcs.intune.packaging\tcs.intune.packaging.psd1 -Force
+          
+          # Verify module is loaded
+          $module = Get-Module -Name tcs.intune.packaging
+          if (-not $module) {
+            throw "Module tcs.intune.packaging is not loaded in update step"
+          }
+          Write-Host "Module loaded with $($module.ExportedFunctions.Count) functions"
+          
           $docsPath = ".\docs"
           $moduleName = "tcs.intune.packaging"
           
           # Update existing markdown files if they exist
           if (Test-Path $docsPath) {
+            Write-Host "Updating markdown help module..."
             Update-MarkdownHelpModule -Path $docsPath -RefreshModulePage
           }
 
