@@ -21,6 +21,7 @@ jobs:
   docs:
     permissions:
       contents: write
+      pull-requests: write
     uses: ntatschner/tcs-shared-workflows/.github/workflows/powershell-docs.yml@main
     with:
       module_name: 'tcs.intune.packaging'
