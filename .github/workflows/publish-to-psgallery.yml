@@ -1,0 +1,12 @@
+name: 'Publish to PSGallery'
+on:
+  release:
+    types: [published]
+
+jobs:
+  publish:
+    uses: TheCodeSaiyan-PowerShell/tcs-shared-workflows/.github/workflows/powershell-publish.yml@main
+    with:
+      moduleName: 'tcs.intune.packaging'
+    secrets:
+      psgallery_api_key: ${{ secrets.PSGALLERY_API_KEY }}
