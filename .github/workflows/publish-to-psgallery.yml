@@ -5,7 +5,7 @@ on:
 
 jobs:
   publish:
-    uses: TheCodeSaiyan-PowerShell/tcs-shared-workflows/.github/workflows/powershell-publish.yml@main
+    uses: ntatschner/tcs-shared-workflows/.github/workflows/powershell-publish.yml@main
     with:
       moduleName: 'tcs.intune.packaging'
     secrets:

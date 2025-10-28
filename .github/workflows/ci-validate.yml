@@ -7,6 +7,6 @@ on:
 
 jobs:
   validate:
-    uses: TheCodeSaiyan-PowerShell/tcs-shared-workflows/.github/workflows/powershell-validate.yml@main
+    uses: ntatschner/tcs-shared-workflows/.github/workflows/powershell-validate.yml@main
     with:
       moduleName: 'tcs.intune.packaging'
