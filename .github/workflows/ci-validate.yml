@@ -9,4 +9,5 @@ jobs:
   validate:
     uses: ntatschner/tcs-shared-workflows/.github/workflows/powershell-validate.yml@main
     with:
-      moduleName: 'tcs.intune.packaging'
+      module_name: 'tcs.intune.packaging'
+      module_path: 'modules/tcs.intune.packaging'

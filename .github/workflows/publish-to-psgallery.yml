@@ -7,6 +7,7 @@ jobs:
   publish:
     uses: ntatschner/tcs-shared-workflows/.github/workflows/powershell-publish.yml@main
     with:
-      moduleName: 'tcs.intune.packaging'
+      module_name: 'tcs.intune.packaging'
+      module_path: 'modules/tcs.intune.packaging'
     secrets:
       psgallery_api_key: ${{ secrets.PSGALLERY_API_KEY }}
