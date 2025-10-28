@@ -22,7 +22,14 @@ jobs:
     permissions:
       contents: write
       pull-requests: write
-    uses: ntatschner/tcs-shared-workflows/.github/workflows/powershell-docs.yml@main
+    uses: ntatschner/tcs-shared-workflows/.github/workflows/generate-docs.yml@main
     with:
-      module_name: 'tcs.intune.packaging'
-      module_path: 'modules/tcs.intune.packaging'
+      module-name: 'tcs.intune.packaging'
+      module-path: 'modules/tcs.intune.packaging'
+      docs-path: './docs'
+      required-modules: |
+        Microsoft.Graph.Authentication
+        Microsoft.Graph.Devices.CorporateManagement
+        Microsoft.Graph.Intune
+        tcs.core
+      pre-import-script-path: '.github/scripts/setup-doc-stubs.ps1'
