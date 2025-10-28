@@ -5,9 +5,12 @@ on:
 
 jobs:
   publish:
-    uses: ntatschner/tcs-shared-workflows/.github/workflows/powershell-publish.yml@main
+    uses: ntatschner/tcs-shared-workflows/.github/workflows/publish-to-psgallery.yml@main
     with:
-      module_name: 'tcs.intune.packaging'
-      module_path: 'modules/tcs.intune.packaging'
+      module-name: 'tcs.intune.packaging'
+      module-path: 'modules/tcs.intune.packaging'
+      force-publish: false
+      create-release: false
+      run-validation: true
     secrets:
-      psgallery_api_key: ${{ secrets.PSGALLERY_API_KEY }}
+      psgallery-api-key: ${{ secrets.PSGALLERY_API_KEY }}
