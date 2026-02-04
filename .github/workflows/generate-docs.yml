@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - dev
     paths:
       - 'modules/**/*.ps1'
       - 'modules/**/*.psm1'
@@ -11,6 +12,7 @@ on:
   pull_request:
     branches:
       - main
+      - dev
     paths:
       - 'modules/**/*.ps1'
       - 'modules/**/*.psm1'
@@ -27,6 +29,9 @@ jobs:
       module-name: 'tcs.intune.packaging'
       module-path: 'modules/tcs.intune.packaging'
       docs-path: './docs'
+      commit-docs: true
+      commit-message: 'docs: auto-generated PowerShell help via PlatyPS [skip ci]'
+      locale: 'en-GB'
       required-modules: |
         Microsoft.Graph.Authentication
         Microsoft.Graph.Devices.CorporateManagement

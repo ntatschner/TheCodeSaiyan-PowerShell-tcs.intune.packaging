@@ -1,9 +1,15 @@
 name: 'CI Validate'
 on:
-  push:
-    branches:
-      - main
   pull_request:
+    branches: [ main ]
+    paths:
+      - 'modules/**'
+      - '.github/workflows/**'
+  push:
+    branches: [ main ]
+    paths:
+      - 'modules/**'
+      - '.github/workflows/**'
 
 jobs:
   validate:
