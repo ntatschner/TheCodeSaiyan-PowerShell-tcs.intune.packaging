@@ -11,6 +11,8 @@ on:
 
 jobs:
   create-tag:
+    permissions:
+      contents: write
     uses: ntatschner/tcs-shared-workflows/.github/workflows/create-version-tag.yml@main
     with:
       module-name: 'tcs.intune.packaging'
