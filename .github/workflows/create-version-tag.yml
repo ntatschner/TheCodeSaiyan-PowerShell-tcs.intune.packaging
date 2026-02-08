@@ -1,0 +1,20 @@
+# Creates a version tag (e.g. v0.0.3) when ModuleVersion in the manifest is greater
+# than the current latest tag. Runs on push to main when the manifest changes, or manually.
+name: Create Version Tag
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'modules/tcs.intune.packaging/tcs.intune.packaging.psd1'
+  workflow_dispatch:
+
+jobs:
+  create-tag:
+    uses: ntatschner/tcs-shared-workflows/.github/workflows/create-version-tag.yml@main
+    with:
+      module-name: 'tcs.intune.packaging'
+      module-path: 'modules/tcs.intune.packaging'
+      tag-prefix: 'v'
+    secrets:
+      repo-token: ${{ secrets.GITHUB_TOKEN }}
