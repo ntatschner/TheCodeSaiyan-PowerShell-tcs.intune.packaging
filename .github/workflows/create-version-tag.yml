@@ -1,8 +1,12 @@
 # Creates a version tag (e.g. v0.0.3) when ModuleVersion in the manifest is greater
-# than the current latest tag. Runs on push to main when the manifest changes, or manually.
+# than the current latest tag. Chained after CI Validate on main, or on push/manual.
 name: Create Version Tag
 
 on:
+  workflow_run:
+    workflows: ['CI Validate']
+    types: [completed]
+    branches: [ main ]
   push:
     branches: [ main ]
     paths:
@@ -11,6 +15,7 @@ on:
 
 jobs:
   create-tag:
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
     permissions:
       contents: write
     uses: ntatschner/tcs-shared-workflows/.github/workflows/create-version-tag.yml@main
@@ -18,5 +23,6 @@ jobs:
       module-name: 'tcs.intune.packaging'
       module-path: 'modules/tcs.intune.packaging'
       tag-prefix: 'v'
+      ref: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || (github.event_name == 'push' && github.sha) || '' }}
     secrets:
       repo-token: ${{ secrets.GITHUB_TOKEN }}
