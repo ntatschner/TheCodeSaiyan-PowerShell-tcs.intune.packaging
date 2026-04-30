@@ -9,22 +9,36 @@
     PowerShellVersion    = '5.1'
     RequiredModules      = @(
         @{ ModuleName     = 'tcs.core'
-            ModuleVersion = '0.1.1' 
+            ModuleVersion = '0.1.1'
         }
     )
     NestedModules        = @('tcs.intune.packaging.psm1')
-    FunctionsToExport    = '*'
-    CmdletsToExport      = '*'
-    VariablesToExport    = '*'
-    AliasesToExport      = '*'
-    # ScriptsToProcess ensures classes are loaded before the module
-    ScriptsToProcess     = @('Classes\intune.package.ps1')
+    FunctionsToExport    = @(
+        'Convert-ModuleNameAndReferences',
+        'ConvertTo-SignedScript',
+        'Get-IntunePackagingTool',
+        'Get-MSIProperties',
+        'Invoke-Executable',
+        'New-APFConfigDeployment',
+        'New-APFDeployment',
+        'New-ApplicationDeploymentGroups',
+        'New-IntuneApplication',
+        'New-IntuneWin32AppPackage',
+        'New-IntuneWin32Application',
+        'New-IntuneWin32Rule',
+        'New-PackageJSON',
+        'Publish-IntuneAppPackage',
+        'Start-DownloadFile'
+    )
+    CmdletsToExport      = @()
+    VariablesToExport    = @()
+    AliasesToExport      = @()
     PrivateData          = @{
         PSData = @{
             Tags                       = @('Intune', 'Packaging', 'Deployment', 'Applications')
             ExternalModuleDependencies = ''
             ReleaseNotes               = 'Added support for specifying group members for Available, Required, Test, and Phase1 groups in New-ApplicationDeploymentGroups.'
-        } 
-    } 
-    HelpInfoURI          = 'https://PENDINGHOST/tcs.intune.packaging/'
+        }
+    }
+    HelpInfoURI          = 'https://thecodesaiyan.io/modules/tcs.intune.packaging/'
 }
