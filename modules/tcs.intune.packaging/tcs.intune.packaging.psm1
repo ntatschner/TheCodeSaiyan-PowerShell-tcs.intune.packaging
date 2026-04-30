@@ -1,6 +1,6 @@
 #region Load Classes First (must be loaded before functions that use them)
 $Classes = @(
-    Get-ChildItem -Path $PSScriptRoot\Classes\*.ps1 -ErrorAction SilentlyContinue
+    Get-ChildItem -Path $PSScriptRoot\Classes\*.ps1 -Recurse -ErrorAction SilentlyContinue
 )
 foreach ($Class in $Classes) {
     try {
@@ -14,10 +14,10 @@ foreach ($Class in $Classes) {
 
 #region get public and private function definition files.
 $Public = @(
-    Get-ChildItem -Path $PSScriptRoot\Public\*.ps1 -Exclude "*.Tests.ps1" -ErrorAction SilentlyContinue
+    Get-ChildItem -Path $PSScriptRoot\Public\*.ps1 -Recurse -Exclude "*.Tests.ps1" -ErrorAction SilentlyContinue
 )
 $Private = @(
-    Get-ChildItem -Path $PSScriptRoot\Private\*.ps1 -Exclude "*.Tests.ps1" -ErrorAction SilentlyContinue
+    Get-ChildItem -Path $PSScriptRoot\Private\*.ps1 -Recurse -Exclude "*.Tests.ps1" -ErrorAction SilentlyContinue
 )
 #endregion
 
@@ -49,7 +49,7 @@ Export-ModuleMember -Function $Public.Basename
 
 #region export Classes
 # Export classes to make them available to module consumers
-$ClassNames = $Classes | ForEach-Object { 
+$ClassNames = $Classes | ForEach-Object {
     $content = Get-Content $_.FullName -Raw
     if ($content -match 'Class\s+(\w+)') {
         $matches[1]
