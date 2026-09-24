@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.1] - 2026-09-24
+
+### Fixed
+- Restored the hand-written `about_tcs.intune.packaging` help topic. The shared docs workflow had replaced it with the PlatyPS placeholder.
+
 ## [0.4.0] - 2026-09-24
 
 ### Added
