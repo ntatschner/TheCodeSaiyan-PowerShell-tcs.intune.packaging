@@ -103,12 +103,47 @@ Describe 'New-APFConfigDeployment' {
         }
     }
 
-    Context 'Not implemented types' {
-        It 'Returns an error for <Type>' -ForEach @(@{ Type = 'Script-App' }, @{ Type = 'Script-User' }, @{ Type = 'Custom' }) {
-            $output = New-APFConfigDeployment -ConfigurationType $Type -Name 'X' -Version '1.0' -DestinationFolder $Destination -ErrorVariable apfError -ErrorAction SilentlyContinue -Confirm:$false
-            $output | Should -BeNullOrEmpty
-            "$apfError" | Should -Match 'not implemented'
-            Join-Path -Path $Destination -ChildPath 'X' | Should -Not -Exist
+    Context 'Script packages' {
+        BeforeEach {
+            $DeployScript = Join-Path -Path $TestDrive -ChildPath 'deploy.ps1'
+            Set-Content -Path $DeployScript -Value 'exit 0'
+        }
+
+        It 'Creates a <Type> package that runs the supplied script as <Target>' -ForEach @(
+            @{ Type = 'Script-App'; Target = 'system' }
+            @{ Type = 'Script-User'; Target = 'user' }
+        ) {
+            $extra = Join-Path -Path $TestDrive -ChildPath 'settings.xml'
+            Set-Content -Path $extra -Value '<x/>'
+            $null = New-APFConfigDeployment -ConfigurationType $Type -Name 'ScriptPkg' -Version '1.0' -Path $DeployScript -IncludedFiles $extra -DestinationFolder $Destination -Confirm:$false
+            $folder = Join-Path -Path $Destination -ChildPath 'ScriptPkg'
+            foreach ($file in 'deploy.ps1', 'settings.xml', 'Intune-I-MainInstaller.ps1', 'Intune-D-Detection.ps1', 'Intune-Pre-Install.ps1', 'Intune-Post-Install.ps1', 'Write-DeploymentLog.ps1') {
+                Join-Path -Path $folder -ChildPath $file | Should -Exist
+            }
+            Join-Path -Path $folder -ChildPath 'Intune-Custom.ps1' | Should -Not -Exist
+            Join-Path -Path $folder -ChildPath 'README.md' | Should -Not -Exist
+            $config = Get-Content -Path (Join-Path -Path $folder -ChildPath 'config.installer.json') -Raw | ConvertFrom-Json
+            $config.scriptfile | Should -Be 'deploy.ps1'
+            $config.target | Should -Be $Target
+            $config.includedfiles | Should -Be 'settings.xml'
+            $config.version | Should -Be '1.0'
+            (Get-Content -Path (Join-Path -Path $folder -ChildPath 'Intune-D-Detection.ps1') -Raw) | Should -Match '\$AppName = "ScriptPkg"'
+        }
+
+        It 'Rejects a deployment script that is not a .ps1 file' {
+            $cmd = Join-Path -Path $TestDrive -ChildPath 'deploy.cmd'
+            Set-Content -Path $cmd -Value 'x'
+            $null = New-APFConfigDeployment -ConfigurationType Script-App -Name 'Bad' -Version '1.0' -Path $cmd -DestinationFolder $Destination -ErrorVariable apfError -ErrorAction SilentlyContinue -Confirm:$false
+            "$apfError" | Should -Match '\.ps1'
+        }
+
+        It 'Creates a Custom package with the placeholder script and the chosen target' {
+            $null = New-APFConfigDeployment -ConfigurationType Custom -Name 'CustomPkg' -Version '2.0' -Target User -DestinationFolder $Destination -Confirm:$false
+            $folder = Join-Path -Path $Destination -ChildPath 'CustomPkg'
+            Join-Path -Path $folder -ChildPath 'Intune-Custom.ps1' | Should -Exist
+            $config = Get-Content -Path (Join-Path -Path $folder -ChildPath 'config.installer.json') -Raw | ConvertFrom-Json
+            $config.scriptfile | Should -Be 'Intune-Custom.ps1'
+            $config.target | Should -Be 'user'
         }
     }
 

@@ -34,6 +34,7 @@
         PSData = @{
             Tags         = @('Intune', 'Packaging', 'Deployment', 'Applications', 'Win32', 'IntuneWin', 'Windows', 'PSEdition_Desktop', 'PSEdition_Core')
             ProjectUri   = 'https://github.com/ntatschner/TheCodeSaiyan-PowerShell-tcs.intune.packaging'
+            LicenseUri   = 'https://github.com/ntatschner/TheCodeSaiyan-PowerShell-tcs.intune.packaging/blob/main/LICENSE'
             ReleaseNotes = 'https://github.com/ntatschner/TheCodeSaiyan-PowerShell-tcs.intune.packaging/blob/main/CHANGELOG.md'
         }
     }

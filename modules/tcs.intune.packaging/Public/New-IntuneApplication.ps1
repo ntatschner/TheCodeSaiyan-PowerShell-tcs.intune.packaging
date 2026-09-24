@@ -78,7 +78,9 @@ function New-IntuneApplication {
         The assignment filter rule.
 
     .PARAMETER Publish
-        Reserved. Publishing to Intune is not implemented yet; a warning is shown and the created files are kept.
+        Publishes the package to Intune with Publish-IntuneAppPackage after creating it. DetectionRuleConfig
+        (and RequirementRuleConfig) must then be rules created with New-IntuneWin32Rule. With -Overwrite an
+        existing app with the same name gets the package as a new content version.
 
     .PARAMETER IntuneToolsPath
         The path to IntuneWinAppUtil.exe. When the file does not exist, release v1.8.6 of the tool is
@@ -94,11 +96,12 @@ function New-IntuneApplication {
         Do not create the .intunewin package.
 
     .PARAMETER NoCleanUp
-        Reserved for use with Publish; the created files are currently always kept.
+        Keep the JSON file and .intunewin package after a successful -Publish (they are removed by default).
 
     .OUTPUTS
         System.Management.Automation.PSCustomObject
-        JsonPath and IntuneWinPath of the created files ($null for files that were not created).
+        JsonPath and IntuneWinPath of the created files ($null for files that were not created or were
+        removed after publishing) and App, the published app when -Publish is used.
 
     .EXAMPLE
         New-IntuneApplication -ApplicationName "MyApp" -SourceFiles "C:\Source\MyApp" -MainInstallerFileName "setup.exe" -InstallCommand "setup.exe /S" -UninstallCommand "setup.exe /U" -DetectionRuleConfig @{ Type = 'File'; Path = 'C:\Program Files\MyApp' } -AssignmentType All-Devices
@@ -267,6 +270,7 @@ function New-IntuneApplication {
     process {
         $JSONOutputPath = $null
         $IntunewinFullPath = $null
+        $StagingFolder = $null
 
         #region CreateJSON
         if (-not $NoJson) {
@@ -319,13 +323,29 @@ function New-IntuneApplication {
         }
         #endregion CreateIntuneWin
 
+        $App = $null
         if ($Publish) {
-            Write-Warning 'Publishing to Intune is not implemented yet. The package files were created but not uploaded.'
+            if ($NoJson -or $NoIntuneWin) {
+                throw 'Publish needs both the JSON file and the .intunewin package; do not combine it with -NoJson or -NoIntuneWin.'
+            }
+            if ($PSCmdlet.ShouldProcess($ApplicationName, 'Publish to Intune')) {
+                $App = Publish-IntuneAppPackage -IntuneAppJSONPath $JSONOutputPath -IntuneWinPath $IntunewinFullPath -Force:$Overwrite -ErrorAction Stop
+                if (-not $NoCleanUp) {
+                    Write-Verbose 'Removing the published JSON file and .intunewin package.'
+                    Remove-Item -Path $JSONOutputPath, $IntunewinFullPath -Force -ErrorAction SilentlyContinue
+                    if ($StagingFolder) {
+                        Remove-Item -Path $StagingFolder.FullName -Recurse -Force -ErrorAction SilentlyContinue
+                    }
+                    $JSONOutputPath = $null
+                    $IntunewinFullPath = $null
+                }
+            }
         }
 
         [PSCustomObject]@{
             JsonPath      = $JSONOutputPath
             IntuneWinPath = $IntunewinFullPath
+            App           = $App
         }
     }
 }

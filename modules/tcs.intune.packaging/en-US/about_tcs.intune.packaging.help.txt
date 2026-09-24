@@ -13,7 +13,7 @@ LONG DESCRIPTION
 
     The module needs Windows (Windows PowerShell 5.1 or PowerShell 7) and
     tcs.core 0.3.0 or later. Commands that talk to Entra ID or Intune also
-    need the Microsoft.Entra or Microsoft.Graph modules.
+    need the Microsoft.Entra or Microsoft.Graph.Authentication modules.
 
     APF packages are built from the installer scripts in the module's
     Public/Templates folder. Each package contains Intune-I-MainInstaller.ps1
@@ -38,8 +38,9 @@ NOTE
     turn it off with -Telemetry $false or the TCS_TELEMETRY_OPTOUT=1
     environment variable.
 
-    Publish-IntuneAppPackage and New-IntuneWin32Application do not upload or
-    create applications in Intune yet.
+    Publish-IntuneAppPackage and New-IntuneWin32Application create Win32 apps
+    in Intune and upload their content with Microsoft Graph. Connect first
+    with Connect-MgGraph -Scopes DeviceManagementApps.ReadWrite.All.
 
 SEE ALSO
     https://github.com/ntatschner/TheCodeSaiyan-PowerShell-tcs.intune.packaging

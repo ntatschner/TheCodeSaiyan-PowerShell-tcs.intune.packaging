@@ -71,9 +71,27 @@ Describe 'New-IntuneApplication' {
         }
     }
 
-    It 'Warns that publishing is not implemented and keeps the files' {
-        $result = New-IntuneApplication @Common -SourceFiles $Source -NoIntuneWin -Publish -WarningVariable publishWarning -WarningAction SilentlyContinue
-        "$publishWarning" | Should -Match 'not implemented'
-        $result.JsonPath | Should -Exist
+    It 'Publishes the package and removes the files unless -NoCleanUp is used' {
+        $tool = Join-Path -Path $TestDrive -ChildPath 'IntuneWinAppUtil.exe'
+        Set-Content -Path $tool -Value 'x'
+        Mock -ModuleName tcs.intune.packaging Invoke-Executable {
+            Set-Content -Path (Join-Path -Path $Output -ChildPath 'setup.intunewin') -Value 'pkg'
+            [PSCustomObject]@{ ExitCode = 0 }
+        }
+        Mock -ModuleName tcs.intune.packaging Publish-IntuneAppPackage { [PSCustomObject]@{ id = 'app-1' } }
+        $result = New-IntuneApplication @Common -SourceFiles $Source -IntuneToolsPath $tool -Publish -Confirm:$false
+        $result.App.id | Should -Be 'app-1'
+        Should -Invoke -ModuleName tcs.intune.packaging Publish-IntuneAppPackage -Times 1 -Exactly -ParameterFilter {
+            $IntuneAppJSONPath -eq (Join-Path -Path $Output -ChildPath 'MyApp.1.0.json') -and $IntuneWinPath -eq (Join-Path -Path $Output -ChildPath 'setup.intunewin')
+        }
+        Join-Path -Path $Output -ChildPath 'MyApp.1.0.json' | Should -Not -Exist
+        Join-Path -Path $Output -ChildPath 'setup.intunewin' | Should -Not -Exist
+
+        $kept = New-IntuneApplication @Common -SourceFiles $Source -IntuneToolsPath $tool -Publish -NoCleanUp -Confirm:$false
+        $kept.JsonPath | Should -Exist
+    }
+
+    It 'Refuses -Publish without the JSON file or package' {
+        { New-IntuneApplication @Common -SourceFiles $Source -NoIntuneWin -Publish } | Should -Throw '*-NoJson or -NoIntuneWin*'
     }
 }

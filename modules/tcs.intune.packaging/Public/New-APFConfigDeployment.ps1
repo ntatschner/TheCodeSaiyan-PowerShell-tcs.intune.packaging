@@ -15,14 +15,17 @@ function New-APFConfigDeployment {
           - PowerShellProfiles and Files: Files, FilesDirectoryName.
           - Script-OS and WindowsFeature: IncludedFiles.
           - StandAlone-Exe: Path, IncludedFiles, CLIApp.
+          - Script-App and Script-User: Path (the deployment script), IncludedFiles.
+          - Custom: IncludedFiles, Target.
           - Standalone-Application: Path, IncludedFiles, LauncherName, LauncherRelativePath.
 
         Dynamic parameters:
           Name                    The name of the deployment; written into the configuration files and
                                   used as the folder name.
           Version                 The version of the deployment (x.x.x.x).
-          Path                    The main file (StandAlone-Exe) or the file or folder of a standalone
-                                  application (Standalone-Application).
+          Path                    The main file (StandAlone-Exe), the file or folder of a standalone
+                                  application (Standalone-Application) or the PowerShell deployment
+                                  script (Script-App, Script-User).
           DestinationFolder       Where the package folder is created. Default is the current directory.
           CreateIntuneWinPackage  Also create a .intunewin package.
           IncludedFiles           Additional files or folders to include in the package.
@@ -39,12 +42,17 @@ function New-APFConfigDeployment {
           Files                   The files to deploy (PowerShellProfiles and Files).
           FilesDirectoryName      The name of the directory the files are deployed to.
 
-        The types Script-App, Script-User and Custom are reserved and not implemented yet.
+        Script-App, Script-User and Custom packages use the "script" template: the main installer runs
+        the pre-install script, the deployment script and the post-install script (each with -Uninstall
+        for the uninstall command) and saves the configuration that the detection script checks.
+          - Script-App runs your script in the system context.
+          - Script-User runs your script in the user context (assign the Intune app to run as user).
+          - Custom adds a placeholder deployment script, Intune-Custom.ps1, for you to complete.
 
     .PARAMETER ConfigurationType
         The type of configuration package to create: Registry, PowerShellProfiles, Files, Script-OS,
         Script-App, Script-User, StandAlone-Exe, Standalone-Application, WindowsFeature or Custom.
-        Script-App, Script-User and Custom are not implemented yet and return an error.
+        Script-App, Script-User and Custom build a script package; see the description.
 
     .OUTPUTS
         System.String
@@ -111,7 +119,9 @@ function New-APFConfigDeployment {
         $selected = switch ($ConfigurationType) {
             'Registry' { 0, 1, 2 }
             { $_ -in 'Files', 'PowerShellProfiles' } { 6, 7 }
-            { $_ -in 'Script-OS', 'Script-App', 'Script-User', 'WindowsFeature', 'Custom' } { 0 }
+            { $_ -in 'Script-OS', 'WindowsFeature' } { 0 }
+            { $_ -in 'Script-App', 'Script-User' } { 0 }
+            'Custom' { 0, 2 }
             'StandAlone-Exe' { 0, 5 }
             'Standalone-Application' { 0, 3, 4 }
             default { $null }
@@ -126,7 +136,7 @@ function New-APFConfigDeployment {
                 $paramDictionary.Add($param.Name, $param.Parameter)
             }
         }
-        if ($ConfigurationType -notin 'StandAlone-Exe', 'Standalone-Application') {
+        if ($ConfigurationType -notin 'StandAlone-Exe', 'Standalone-Application', 'Script-App', 'Script-User') {
             $null = $paramDictionary.Remove('Path')
         }
         return $paramDictionary
@@ -208,8 +218,8 @@ function New-APFConfigDeployment {
         Invoke-TelemetryCollection @TelemetryArgs -Stage Start -ClearTimer
 
         try {
-            if ($ConfigurationType -in 'Script-App', 'Script-User', 'Custom') {
-                throw [System.NotImplementedException]::new("The configuration type '$ConfigurationType' is not implemented yet.")
+            if ($ConfigurationType -in @('Script-App', 'Script-User') -and ([System.IO.Path]::GetExtension($Path) -ne '.ps1')) {
+                throw "For $ConfigurationType, Path must be the PowerShell deployment script (.ps1); '$Path' is not."
             }
 
             $PackageFolder = Join-Path -Path $DestinationFolder -ChildPath $Name
@@ -351,6 +361,36 @@ function New-APFConfigDeployment {
                     $MainConfig | ConvertTo-Json -Depth 10 | Set-Content -Path $ConfigPath -ErrorAction Stop
 
                     Edit-DetectionScript -ScriptPath (Join-Path -Path $PackageFolder -ChildPath $DetectionFile) -Replacements @{
+                        '##NAME_TEMPLATE'    = $Name
+                        '##VERSION_TEMPLATE' = $Version.ToString()
+                    }
+                }
+                { $_ -in "Script-App", "Script-User", "Custom" } {
+                    $TemplateFolder = Join-Path -Path $TemplateRoot -ChildPath 'script'
+                    Write-Verbose "Copying template files to destination folder."
+                    Copy-Item -Path (Join-Path -Path $TemplateFolder -ChildPath '*') -Destination $PackageFolder -Recurse -Exclude '*.md', 'Intune-Custom.ps1' -ErrorAction Stop
+                    if ($ConfigurationType -eq 'Custom') {
+                        Copy-Item -Path (Join-Path -Path $TemplateFolder -ChildPath 'Intune-Custom.ps1') -Destination $PackageFolder -ErrorAction Stop
+                        $ScriptFile = 'Intune-Custom.ps1'
+                        $ScriptTarget = $Target.ToLowerInvariant()
+                    }
+                    else {
+                        Copy-Item -Path $Path -Destination $PackageFolder -ErrorAction Stop
+                        $ScriptFile = Split-Path -Path $Path -Leaf
+                        $ScriptTarget = $(if ($ConfigurationType -eq 'Script-User') { 'user' } else { 'system' })
+                    }
+                    Copy-IncludedItem -Item $IncludedFiles -Destination $PackageFolder
+
+                    $MainConfig = Get-Content -Path $ConfigPath -Raw -ErrorAction Stop | ConvertFrom-Json
+                    Add-TemplateValue -Config $MainConfig -Property 'name' -Value $Name
+                    Add-TemplateValue -Config $MainConfig -Property 'version' -Value $Version.ToString()
+                    Add-TemplateValue -Config $MainConfig -Property 'target' -Value $ScriptTarget
+                    Add-TemplateValue -Config $MainConfig -Property 'scriptfile' -Value $ScriptFile
+                    Add-TemplateValue -Config $MainConfig -Property 'includedfiles' -Value (@($IncludedFiles | ForEach-Object { Split-Path -Path $_ -Leaf }) -join ',')
+                    Add-TemplateValue -Config $MainConfig -Property 'packagedby' -Value $PackagedBy
+                    $MainConfig | ConvertTo-Json -Depth 10 | Set-Content -Path $ConfigPath -ErrorAction Stop
+
+                    Edit-DetectionScript -ScriptPath (Join-Path -Path $PackageFolder -ChildPath 'Intune-D-Detection.ps1') -Replacements @{
                         '##NAME_TEMPLATE'    = $Name
                         '##VERSION_TEMPLATE' = $Version.ToString()
                     }

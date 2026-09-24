@@ -1,105 +1,127 @@
 function New-IntuneWin32Application {
     <#
     .SYNOPSIS
-        Prepares the properties of a new or cloned Win32 application in Microsoft Intune.
+        Creates a Win32 application in Microsoft Intune and uploads its .intunewin package.
 
     .DESCRIPTION
-        The New-IntuneWin32Application function builds the properties for a Win32 application in
-        Microsoft Intune from its parameters or, with ExistingPackage, from an existing application that
-        is cloned (parameters you specify win over the cloned values).
+        The New-IntuneWin32Application function creates a win32LobApp in Microsoft Intune with
+        Microsoft Graph (POST /deviceAppManagement/mobileApps), uploads the encrypted content of the
+        package (.intunewin file) to Azure Storage, commits it and sets the app's committed content version.
+        The app is returned when the upload is complete.
 
-        Creating the application and uploading the .intunewin content through Microsoft Graph is not
-        implemented yet: after building the properties the function returns an error that says so.
+        With ExistingPackage the properties of an existing Win32 app are copied (display name,
+        description, publisher, owner, developer, notes, URLs, command lines, rules, return codes,
+        install experience and requirements); parameters you specify win over the copied values.
+        Assignments and supersedence are not copied.
 
-        Requires the Microsoft.Graph.Authentication and Microsoft.Graph.Devices.CorporateManagement
-        modules and a connection made with Connect-MgGraph. ExistingPackage offers tab completion of
-        the applications in the connected tenant.
+        Requires the Microsoft.Graph.Authentication module and a connection made with
+        Connect-MgGraph -Scopes DeviceManagementApps.ReadWrite.All.
 
     .PARAMETER Name
         The display name of the application.
 
     .PARAMETER Description
-        A description of the application and its purpose.
+        A description of the application.
 
     .PARAMETER Version
-        The version number of the application.
+        The application version. Graph v1.0 has no version property for Win32 apps, so the version is
+        added to the notes as "Version: <version>" unless the notes already contain it.
 
     .PARAMETER Publisher
-        The publisher or vendor of the application.
+        The publisher of the application.
 
     .PARAMETER Owner
-        The owner or responsible party for the application.
+        The owner of the application.
 
     .PARAMETER Developer
-        The developer or creator of the application.
+        The developer of the application.
 
     .PARAMETER Notes
-        Additional notes or information about the application.
+        Notes for the application.
 
     .PARAMETER PrivacyInformationUrl
-        URL to the application's privacy information or policy.
+        URL of the privacy statement.
 
     .PARAMETER InformationUrl
-        URL to additional information about the application.
+        URL with more information about the application.
 
     .PARAMETER IsFeatured
         Whether the application is featured in the Company Portal.
 
     .PARAMETER ApplicableArchitectures
-        The architecture the application applies to: x86, x64, arm or neutral. Default is x64.
+        The architectures the app applies to: x86, x64, arm or neutral. Default is x64.
 
     .PARAMETER MinimumFreeDiskSpaceInMB
-        The minimum free disk space, in MB, required on the device.
+        The minimum free disk space, in MB, required to install the app.
 
     .PARAMETER MinimumMemoryInMB
-        The minimum memory, in MB, required on the device.
+        The minimum physical memory, in MB, required to install the app.
 
     .PARAMETER MinimumNumberOfProcessors
-        The minimum number of processors required on the device.
+        The minimum number of processors required to install the app.
 
     .PARAMETER MinimumCpuSpeedInMHz
-        The minimum CPU speed, in MHz, required on the device.
+        The minimum CPU speed, in MHz, required to install the app.
 
     .PARAMETER InstallExperienceRunAsAccount
-        The account the installation runs as: system or user. Default is system.
+        The context the app is installed in: system or user. Default is system.
 
     .PARAMETER InstallExperienceDeviceRestartBehavior
-        The restart behaviour after installation: allow, basedOnReturnCode, suppress or force. Default is suppress.
+        The restart behaviour: basedOnReturnCode, allow, suppress or force. Default is basedOnReturnCode.
 
     .PARAMETER MinimumSupportedWindowsRelease
-        The minimum supported Windows release. Default is 22h2.
+        The minimum supported Windows release, for example 'Windows11_23H2'. Not sent when omitted.
+
+    .PARAMETER InstallCommandLine
+        The command line that installs the app, for example 'msiexec /i "setup.msi" /qn'.
+
+    .PARAMETER UninstallCommandLine
+        The command line that uninstalls the app.
 
     .PARAMETER Rules
-        Detection and requirement rules, for example created with New-IntuneWin32Rule.
+        Detection and requirement rules created with New-IntuneWin32Rule. At least one detection rule
+        is required for a new app.
+
+    .PARAMETER ReturnCodes
+        Return codes as hashtables with returnCode and type (success, failed, softReboot, hardReboot,
+        retry). Default: 0 and 1707 success, 3010 softReboot, 1641 hardReboot, 1618 retry.
 
     .PARAMETER IconFilePath
-        The path to the application icon (PNG or JPG).
+        Path to a PNG or JPG icon for the app.
 
     .PARAMETER IntuneWinFilePath
         The path to the .intunewin package file.
 
     .PARAMETER ExistingPackage
-        The existing application to clone, as "<DisplayName> | <Id>". Tab completion lists the
-        applications in the connected tenant.
+        The existing application to clone, as "<DisplayName> | <Id>" or just the app ID. Tab completion
+        lists the Win32 apps in the connected tenant.
+
+    .PARAMETER PollIntervalSeconds
+        How often to check the upload and commit state. Default is 5 seconds.
+
+    .PARAMETER TimeoutSeconds
+        How long to wait for each upload or commit state. Default is 600 seconds.
 
     .OUTPUTS
-        None
+        System.Management.Automation.PSCustomObject
+        The created win32LobApp as returned by Microsoft Graph, with committedContentVersion set.
 
     .EXAMPLE
-        New-IntuneWin32Application -Name "MyApp" -Description "My Application" -Version "1.0.0" -Publisher "Contoso" -Owner "IT Admin" -Developer "Dev Team" -IntuneWinFilePath .\MyApp.intunewin
+        $detection = New-IntuneWin32Rule -RuleParentType detection -RuleType MSI -MSIPath .\setup.msi -AutoDetect $true
+        New-IntuneWin32Application -Name "MyApp" -Description "My Application" -Publisher "Contoso" -Owner "IT" -Developer "Dev Team" -InstallCommandLine 'msiexec /i "setup.msi" /qn' -UninstallCommandLine 'msiexec /x "setup.msi" /qn' -Rules $detection -IntuneWinFilePath .\setup.intunewin
 
-        Builds the properties for a new Win32 application.
+        Creates the app with an MSI detection rule and uploads setup.intunewin.
 
     .EXAMPLE
-        New-IntuneWin32Application -Version "2.0.0" -ExistingPackage "MyApp | 00000000-0000-0000-0000-000000000000" -IntuneWinFilePath .\MyApp.intunewin
+        New-IntuneWin32Application -ExistingPackage "MyApp | 00000000-0000-0000-0000-000000000000" -Version "2.0.0" -IntuneWinFilePath .\MyApp-2.0.intunewin
 
-        Builds the properties for a new version of an existing application.
+        Creates a new app with the settings of an existing one and uploads the new package.
 
-    .NOTES
-        Must be connected to Microsoft Graph with appropriate permissions before running this function.
+    .LINK
+        https://learn.microsoft.com/graph/api/intune-apps-win32lobapp-create
     #>
     [CmdletBinding(DefaultParameterSetName = 'NewPackage', SupportsShouldProcess)]
-    [OutputType([void])]
+    [OutputType([PSCustomObject])]
     param (
         [Parameter(Mandatory, ParameterSetName = 'NewPackage')]
         [Parameter(ParameterSetName = 'CloneExistingPackage')]
@@ -109,19 +131,14 @@ function New-IntuneWin32Application {
         [Parameter(ParameterSetName = 'CloneExistingPackage')]
         [string]$Description,
 
-        [Parameter(Mandatory)]
         [version]$Version,
 
         [Parameter(Mandatory, ParameterSetName = 'NewPackage')]
         [Parameter(ParameterSetName = 'CloneExistingPackage')]
         [string]$Publisher,
 
-        [Parameter(Mandatory, ParameterSetName = 'NewPackage')]
-        [Parameter(ParameterSetName = 'CloneExistingPackage')]
         [string]$Owner,
 
-        [Parameter(Mandatory, ParameterSetName = 'NewPackage')]
-        [Parameter(ParameterSetName = 'CloneExistingPackage')]
         [string]$Developer,
 
         [string]$Notes,
@@ -147,12 +164,31 @@ function New-IntuneWin32Application {
         [string]$InstallExperienceRunAsAccount = "system",
 
         [ValidateSet("allow", "basedOnReturnCode", "suppress", "force")]
-        [string]$InstallExperienceDeviceRestartBehavior = "suppress",
+        [string]$InstallExperienceDeviceRestartBehavior = "basedOnReturnCode",
 
-        [string]$MinimumSupportedWindowsRelease = "22h2",
+        [string]$MinimumSupportedWindowsRelease,
 
+        [Parameter(Mandatory, ParameterSetName = 'NewPackage')]
+        [Parameter(ParameterSetName = 'CloneExistingPackage')]
+        [ValidateNotNullOrEmpty()]
+        [string]$InstallCommandLine,
+
+        [Parameter(Mandatory, ParameterSetName = 'NewPackage')]
+        [Parameter(ParameterSetName = 'CloneExistingPackage')]
+        [ValidateNotNullOrEmpty()]
+        [string]$UninstallCommandLine,
+
+        [Parameter(Mandatory, ParameterSetName = 'NewPackage')]
+        [Parameter(ParameterSetName = 'CloneExistingPackage')]
         [hashtable[]]$Rules,
 
+        [hashtable[]]$ReturnCodes,
+
+        [ValidateScript({
+                if (-not (Test-Path -Path $_ -PathType Leaf)) { throw "The icon '$_' does not exist." }
+                if ([System.IO.Path]::GetExtension($_) -notin @('.png', '.jpg', '.jpeg')) { throw "The icon must be a PNG or JPG file." }
+                $true
+            })]
         [string]$IconFilePath,
 
         [Parameter(Mandatory)]
@@ -163,67 +199,157 @@ function New-IntuneWin32Application {
         [ArgumentCompleter({
                 param($CommandName, $ParameterName, $WordToComplete)
                 $null = $CommandName, $ParameterName
-                if (-not (Get-Command -Name 'Get-MgDeviceAppManagementMobileApp' -ErrorAction SilentlyContinue)) {
+                if (-not (Get-Command -Name 'Invoke-MgGraphRequest' -ErrorAction SilentlyContinue)) {
                     return
                 }
                 try {
-                    Get-MgDeviceAppManagementMobileApp -All -Filter "NOT(startswith(Notes, 'PmpAppId:') or startswith(Notes, 'PmpUpdateId:'))" -Property DisplayName, CreatedDateTime, Id -ErrorAction Stop |
-                        Group-Object -Property DisplayName |
-                        ForEach-Object { $_.Group | Sort-Object -Property CreatedDateTime -Descending | Select-Object -First 1 } |
-                        Where-Object { $_.DisplayName -like "$($WordToComplete.Trim("'"))*" } |
-                        ForEach-Object { "'$($_.DisplayName) | $($_.Id)'" }
+                    $Response = Invoke-MgGraphRequest -Method GET -Uri "v1.0/deviceAppManagement/mobileApps?`$filter=isof('microsoft.graph.win32LobApp')&`$select=id,displayName" -OutputType PSObject -ErrorAction Stop
+                    $Response.value |
+                        Where-Object { $_.displayName -like "$($WordToComplete.Trim("'"))*" } |
+                        ForEach-Object { "'$($_.displayName) | $($_.id)'" }
                 }
                 catch {
                     return
                 }
             })]
-        [ValidatePattern('\|')]
-        [string]$ExistingPackage
+        [ValidateNotNullOrEmpty()]
+        [string]$ExistingPackage,
+
+        [ValidateRange(0, 300)]
+        [int]$PollIntervalSeconds = 5,
+
+        [ValidateRange(1, 86400)]
+        [int]$TimeoutSeconds = 600
     )
 
     begin {
-        if (-not (Get-Command -Name 'Get-MgDeviceAppManagementMobileApp' -ErrorAction SilentlyContinue)) {
-            throw 'Get-MgDeviceAppManagementMobileApp is not available. Install the Microsoft.Graph.Devices.CorporateManagement module and connect with Connect-MgGraph.'
-        }
-        if ($PSCmdlet.ParameterSetName -eq 'CloneExistingPackage') {
-            $ExistingPackageSplit = $ExistingPackage.Split('|')
-            $ExistingPackageID = $ExistingPackageSplit[-1].Trim()
-            $ExistingPackageName = $ExistingPackageSplit[0].Trim()
-            Write-Verbose "Retrieving existing package information for $ExistingPackageName ($ExistingPackageID)"
-            try {
-                $ClonePackage = Get-MgDeviceAppManagementMobileApp -MobileAppId $ExistingPackageID -ExpandProperty Assignments -ErrorAction Stop
-            }
-            catch {
-                throw "Failed to retrieve existing package information for $($ExistingPackageName): $($_.Exception.Message)"
-            }
-        }
+        $null = Assert-MgGraphConnection
     }
     process {
-        Write-Verbose "Defining package parameters"
-        $PackageParams = @{
-            DisplayName = $Name
-            Description = $Description
-            Publisher   = $Publisher
-            Owner       = $Owner
-            Developer   = $Developer
-            Notes       = $Notes
-            Version     = $Version
-            Rules       = $Rules
-            FilePath    = $IntuneWinFilePath
+        $TelemetryArgs = @{
+            ModuleName    = $MyInvocation.MyCommand.Module.Name
+            ModuleVersion = [string]$MyInvocation.MyCommand.Module.Version
+            CommandName   = $MyInvocation.MyCommand.Name
+            ExecutionID   = [guid]::NewGuid().ToString()
         }
-        if ($PSCmdlet.ParameterSetName -eq 'CloneExistingPackage') {
-            Write-Verbose "Cloning existing package information for $ExistingPackageName where parameters are not specified."
-            $BoundNames = @($PSBoundParameters.Keys) + @(if ($PSBoundParameters.ContainsKey('Name')) { 'DisplayName' })
-            foreach ($parameter in @($ClonePackage | Get-Member -MemberType Properties).Name) {
-                if (($parameter -in @($PackageParams.Keys)) -and ($parameter -notin $BoundNames) -and -not [string]::IsNullOrEmpty($ClonePackage.$parameter)) {
-                    Write-Verbose "Setting $parameter to $($ClonePackage.$parameter)"
-                    $PackageParams[$parameter] = $ClonePackage.$parameter
+        Invoke-TelemetryCollection @TelemetryArgs -Stage Start -ClearTimer
+        try {
+            $Package = Get-IntuneWinPackageInfo -Path $IntuneWinFilePath -ErrorAction Stop
+
+            # Start from the existing app when cloning; bound parameters are applied on top
+            $Body = [ordered]@{ '@odata.type' = '#microsoft.graph.win32LobApp' }
+            if ($PSCmdlet.ParameterSetName -eq 'CloneExistingPackage') {
+                $ExistingId = $ExistingPackage.Split('|')[-1].Trim()
+                Write-Verbose "Reading the existing app $ExistingId."
+                $Existing = Invoke-MgGraphRequest -Method GET -Uri "v1.0/deviceAppManagement/mobileApps/$ExistingId" -OutputType PSObject -ErrorAction Stop
+                if ($Existing.'@odata.type' -ne '#microsoft.graph.win32LobApp') {
+                    throw "The app '$ExistingId' is not a Win32 app ($($Existing.'@odata.type'))."
+                }
+                foreach ($Property in 'displayName', 'description', 'publisher', 'owner', 'developer', 'notes', 'privacyInformationUrl', 'informationUrl',
+                    'isFeatured', 'installCommandLine', 'uninstallCommandLine', 'applicableArchitectures', 'minimumFreeDiskSpaceInMB', 'minimumMemoryInMB',
+                    'minimumNumberOfProcessors', 'minimumCpuSpeedInMHz', 'rules', 'installExperience', 'returnCodes', 'minimumSupportedWindowsRelease') {
+                    if ($null -ne $Existing.$Property) {
+                        $Body[$Property] = $Existing.$Property
+                    }
                 }
             }
-        }
 
-        if ($PSCmdlet.ShouldProcess([string]$PackageParams.DisplayName, 'Create Intune Win32 application')) {
-            Write-Error -Exception ([System.NotImplementedException]::new('Creating the Win32 application in Intune is not implemented yet.')) -Category NotImplemented
+            $Map = [ordered]@{
+                Name                           = 'displayName'
+                Description                    = 'description'
+                Publisher                      = 'publisher'
+                Owner                          = 'owner'
+                Developer                      = 'developer'
+                Notes                          = 'notes'
+                PrivacyInformationUrl          = 'privacyInformationUrl'
+                InformationUrl                 = 'informationUrl'
+                IsFeatured                     = 'isFeatured'
+                InstallCommandLine             = 'installCommandLine'
+                UninstallCommandLine           = 'uninstallCommandLine'
+                MinimumFreeDiskSpaceInMB       = 'minimumFreeDiskSpaceInMB'
+                MinimumMemoryInMB              = 'minimumMemoryInMB'
+                MinimumNumberOfProcessors      = 'minimumNumberOfProcessors'
+                MinimumCpuSpeedInMHz           = 'minimumCpuSpeedInMHz'
+                MinimumSupportedWindowsRelease = 'minimumSupportedWindowsRelease'
+            }
+            foreach ($Parameter in $Map.Keys) {
+                if ($PSBoundParameters.ContainsKey($Parameter)) {
+                    $Body[$Map[$Parameter]] = $PSBoundParameters[$Parameter]
+                }
+            }
+            if ($PSBoundParameters.ContainsKey('ApplicableArchitectures') -or -not $Body.Contains('applicableArchitectures')) {
+                $Body['applicableArchitectures'] = $ApplicableArchitectures
+            }
+            if ($PSBoundParameters.ContainsKey('InstallExperienceRunAsAccount') -or $PSBoundParameters.ContainsKey('InstallExperienceDeviceRestartBehavior') -or -not $Body.Contains('installExperience')) {
+                $Body['installExperience'] = [ordered]@{
+                    '@odata.type'         = '#microsoft.graph.win32LobAppInstallExperience'
+                    runAsAccount          = $InstallExperienceRunAsAccount
+                    deviceRestartBehavior = $InstallExperienceDeviceRestartBehavior
+                }
+            }
+            if ($PSBoundParameters.ContainsKey('Rules')) {
+                $Body['rules'] = @($Rules)
+            }
+            if (-not @($Body['rules'] | Where-Object { $_.ruleType -eq 'detection' })) {
+                throw 'At least one detection rule is required. Create one with New-IntuneWin32Rule -RuleParentType detection.'
+            }
+            if ($PSBoundParameters.ContainsKey('ReturnCodes')) {
+                $Body['returnCodes'] = @($ReturnCodes)
+            }
+            elseif (-not $Body.Contains('returnCodes')) {
+                $Body['returnCodes'] = @(
+                    @{ returnCode = 0; type = 'success' }
+                    @{ returnCode = 1707; type = 'success' }
+                    @{ returnCode = 3010; type = 'softReboot' }
+                    @{ returnCode = 1641; type = 'hardReboot' }
+                    @{ returnCode = 1618; type = 'retry' }
+                )
+            }
+            if ($Version) {
+                $VersionNote = "Version: $Version"
+                if ([string]$Body['notes'] -notmatch [regex]::Escape($VersionNote)) {
+                    $Body['notes'] = (@([string]$Body['notes'], $VersionNote) | Where-Object { $_ }) -join "`n"
+                }
+            }
+            if ($IconFilePath) {
+                $Extension = [System.IO.Path]::GetExtension($IconFilePath).TrimStart('.').ToLowerInvariant()
+                if ($Extension -eq 'jpg') {
+                    $Extension = 'jpeg'
+                }
+                $Body['largeIcon'] = [ordered]@{
+                    '@odata.type' = '#microsoft.graph.mimeContent'
+                    type          = "image/$Extension"
+                    value         = [System.Convert]::ToBase64String([System.IO.File]::ReadAllBytes((Resolve-Path -Path $IconFilePath).ProviderPath))
+                }
+            }
+            foreach ($Required in 'displayName', 'description', 'publisher', 'installCommandLine', 'uninstallCommandLine') {
+                if ([string]::IsNullOrEmpty([string]$Body[$Required])) {
+                    throw "The app property '$Required' is empty."
+                }
+            }
+            $Body['fileName'] = Split-Path -Path $IntuneWinFilePath -Leaf
+            $Body['setupFilePath'] = $Package.SetupFile
+
+            if (-not $PSCmdlet.ShouldProcess([string]$Body['displayName'], 'Create Intune Win32 app and upload its content')) {
+                Invoke-TelemetryCollection @TelemetryArgs -Stage End
+                return
+            }
+
+            Write-Verbose "Creating the Win32 app '$($Body['displayName'])'."
+            $App = Invoke-MgGraphRequest -Method POST -Uri 'v1.0/deviceAppManagement/mobileApps' -Body ($Body | ConvertTo-Json -Depth 10 -Compress) -ContentType 'application/json' -OutputType PSObject -ErrorAction Stop
+            try {
+                $ContentVersion = Publish-IntuneWin32AppContent -AppId $App.id -IntuneWinPath $IntuneWinFilePath -PollIntervalSeconds $PollIntervalSeconds -TimeoutSeconds $TimeoutSeconds -ErrorAction Stop
+            }
+            catch {
+                throw "The app '$($App.displayName)' ($($App.id)) was created but its content could not be uploaded: $($_.Exception.Message) Upload it again with Publish-IntuneAppPackage -Force, or delete the app."
+            }
+            $App | Add-Member -NotePropertyName committedContentVersion -NotePropertyValue $ContentVersion -Force
+            $App
+            Invoke-TelemetryCollection @TelemetryArgs -Stage End
+        }
+        catch {
+            Invoke-TelemetryCollection @TelemetryArgs -Stage End -Failed $true -Exception $_
+            $PSCmdlet.ThrowTerminatingError($_)
         }
     }
 }
