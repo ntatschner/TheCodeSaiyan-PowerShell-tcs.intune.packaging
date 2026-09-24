@@ -30,8 +30,8 @@ Describe 'New-APFDeployment' {
         $config.installswitches | Should -Be '/S'
         $config.uninstallswitches | Should -Be '/U'
         $detection = Get-Content -Path (Join-Path -Path $appFolder -ChildPath 'Intune-D-AppDetection.ps1') -Raw
-        $detection | Should -Match '\$AppName = "My App"'
-        $detection | Should -Match '\$Version = "1\.2\.3\.4"'
+        $detection | Should -Match "\`$AppName = 'My App'"
+        $detection | Should -Match "\`$Version = '1\.2\.3\.4'"
         $output -join "`n" | Should -Match 'successfully packaged'
     }
 
@@ -64,5 +64,35 @@ Describe 'New-APFDeployment' {
             $SourceFolder -eq (Join-Path -Path $Destination -ChildPath 'Pkg') -and $OutputFolder -eq $Destination
         }
         $output -join "`n" | Should -Match 'Setup\.intunewin'
+    }
+
+    It 'Leaves an existing folder unchanged when the overwrite is declined' {
+        $existing = Join-Path -Path $Destination -ChildPath 'Existing'
+        $null = New-Item -Path $existing -ItemType Directory
+        Set-Content -Path (Join-Path -Path $existing -ChildPath 'old.txt') -Value 'old'
+        Mock -ModuleName tcs.intune.packaging Confirm-FolderOverwrite { $false }
+        $output = New-APFDeployment -Path $Installer -Name 'Existing' -Version '1.0' -DestinationFolder $Destination -Confirm:$false -WarningVariable apfWarning -WarningAction SilentlyContinue
+        Join-Path -Path $existing -ChildPath 'old.txt' | Should -Exist
+        Join-Path -Path $existing -ChildPath 'Setup.exe' | Should -Not -Exist
+        "$apfWarning" | Should -Match 'was not changed'
+        $output | Should -BeNullOrEmpty
+    }
+
+    It 'Writes a name with quotes and a subexpression into a detection script that parses' {
+        $name = "O'Brien `$(Get-Date)"
+        $null = New-APFDeployment -Path $Installer -Name $name -Version '1.0' -DestinationFolder $Destination -Confirm:$false
+        $script = Join-Path -Path (Join-Path -Path $Destination -ChildPath $name) -ChildPath 'Intune-D-AppDetection.ps1'
+        $tokens = $null
+        $errors = $null
+        $ast = [System.Management.Automation.Language.Parser]::ParseFile($script, [ref]$tokens, [ref]$errors)
+        $errors | Should -BeNullOrEmpty
+        $assignment = $ast.Find({ param($node) $node -is [System.Management.Automation.Language.AssignmentStatementAst] -and $node.Left.VariablePath.UserPath -eq 'AppName' }, $true)
+        $assignment.Right.Expression.Value | Should -BeExactly $name
+    }
+
+    It 'Rejects a name that would leave the destination folder' {
+        $null = New-APFDeployment -Path $Installer -Name '..' -Version '1.0' -DestinationFolder $Destination -Confirm:$false -ErrorVariable apfError -ErrorAction SilentlyContinue
+        "$apfError" | Should -Match 'not a valid name'
+        @(Get-ChildItem -LiteralPath $Destination).Count | Should -Be 0
     }
 }

@@ -2,8 +2,8 @@
 # Intune-I-MainInstaller.ps1 exists and its version is the required version or later.
 
 # Name and version as per config.installer.json
-$AppName = "##NAME_TEMPLATE"
-$Version = "##VERSION_TEMPLATE"
+$AppName = '##NAME_TEMPLATE'
+$Version = '##VERSION_TEMPLATE'
 $APFBase = "APF"
 
 # System deployments save their configuration under Program Files (x86), user deployments under

@@ -42,6 +42,13 @@ function New-APFConfigDeployment {
           Files                   The files to deploy (PowerShellProfiles and Files).
           FilesDirectoryName      The name of the directory the files are deployed to.
 
+        When the package folder already exists you are asked before it is deleted and recreated; when
+        you decline, that deployment is skipped with a warning. The package folder is always a
+        subfolder of DestinationFolder: Name must not be '.' or '..', contain path separators, wildcard
+        characters ([ ]) or characters that Windows does not allow in file names (< > : " | ? *), or
+        end with a space or a dot. Name, Version and the other dynamic parameters can be bound from the
+        pipeline by property name, one package per input object.
+
         Script-App, Script-User and Custom packages use the "script" template: the main installer runs
         the pre-install script, the deployment script and the post-install script (each with -Uninstall
         for the uninstall command) and saves the configuration that the detection script checks.
@@ -143,44 +150,8 @@ function New-APFConfigDeployment {
     }
 
     begin {
-        ## Convert bound dynamic params to variables
-        $DestinationFolder = $PSBoundParameters['DestinationFolder']
-        if ([string]::IsNullOrEmpty($DestinationFolder)) {
-            $DestinationFolder = $PWD.Path
-        }
-        $Name = $PSBoundParameters['Name']
-        $Version = $PSBoundParameters['Version']
-        $Path = $PSBoundParameters['Path']
-        $IncludedFiles = @($PSBoundParameters['IncludedFiles'] | Where-Object { $_ })
-        $CreateIntuneWinPackage = [bool]$PSBoundParameters['CreateIntuneWinPackage']
-        $RegistryValue = $PSBoundParameters['RegistryValue']
-        $Target = $PSBoundParameters['Target']
-        if ([string]::IsNullOrEmpty($Target)) {
-            $Target = 'System'
-        }
-        $LauncherName = $PSBoundParameters['LauncherName']
-        $LauncherRelativePath = $PSBoundParameters['LauncherRelativePath']
-        $CLIApp = [bool]$PSBoundParameters['CLIApp']
-        $FilesDirectoryName = $PSBoundParameters['FilesDirectoryName']
-        $Files = @($PSBoundParameters['Files'] | Where-Object { $_ })
         $TemplateRoot = Join-Path -Path $PSScriptRoot -ChildPath 'Templates'
         $PackagedBy = [Environment]::UserName
-
-        # Creates the package folder, or asks before deleting and recreating an existing one
-        function Initialize-PackageFolder {
-            param ([string]$FolderPath)
-            if (Test-Path -Path $FolderPath) {
-                if ($PSCmdlet.ShouldContinue("Overwrite existing folder '$FolderPath' for the deployment? Warning: This will recursively delete all files in the folder.", "Confirm Overwrite")) {
-                    Write-Verbose "Removing existing directory $FolderPath and recreating it."
-                    Remove-Item -Path $FolderPath -Recurse -Force -ErrorAction Stop
-                    $null = New-Item -Path $FolderPath -ItemType Directory -ErrorAction Stop
-                }
-            }
-            else {
-                Write-Verbose "Creating package folder $FolderPath"
-                $null = New-Item -Path $FolderPath -ItemType Directory -ErrorAction Stop
-            }
-        }
 
         # Sets a value on the imported template configuration, adding the property when it is missing
         function Add-TemplateValue {
@@ -197,15 +168,6 @@ function New-APFConfigDeployment {
                 Copy-Item -Path $i -Destination $Destination -Recurse -Force -ErrorAction Stop
             }
         }
-
-        function Edit-DetectionScript {
-            param ([string]$ScriptPath, [hashtable]$Replacements)
-            $Content = Get-Content -Path $ScriptPath -Raw -ErrorAction Stop
-            foreach ($Key in $Replacements.Keys) {
-                $Content = $Content.Replace($Key, [string]$Replacements[$Key])
-            }
-            Set-Content -Path $ScriptPath -Value $Content -NoNewline -ErrorAction Stop
-        }
     }
 
     process {
@@ -218,16 +180,52 @@ function New-APFConfigDeployment {
         Invoke-TelemetryCollection @TelemetryArgs -Stage Start -ClearTimer
 
         try {
+            # The dynamic parameters can be bound from the pipeline (ValueFromPipelineByPropertyName),
+            # so they are read here, per input object, and not in begin
+            $DestinationFolder = $PSBoundParameters['DestinationFolder']
+            if ([string]::IsNullOrEmpty($DestinationFolder)) {
+                $DestinationFolder = $PWD.Path
+            }
+            $Name = $PSBoundParameters['Name']
+            $Version = $PSBoundParameters['Version']
+            $Path = $PSBoundParameters['Path']
+            $IncludedFiles = @($PSBoundParameters['IncludedFiles'] | Where-Object { $_ })
+            $CreateIntuneWinPackage = [bool]$PSBoundParameters['CreateIntuneWinPackage']
+            $RegistryValue = $PSBoundParameters['RegistryValue']
+            $Target = $PSBoundParameters['Target']
+            if ([string]::IsNullOrEmpty($Target)) {
+                $Target = 'System'
+            }
+            $LauncherName = $PSBoundParameters['LauncherName']
+            $LauncherRelativePath = $PSBoundParameters['LauncherRelativePath']
+            $CLIApp = [bool]$PSBoundParameters['CLIApp']
+            $FilesDirectoryName = $PSBoundParameters['FilesDirectoryName']
+            $Files = @($PSBoundParameters['Files'] | Where-Object { $_ })
+
+            if (-not (Test-Path -LiteralPath $DestinationFolder -PathType Container)) {
+                throw "The destination folder '$DestinationFolder' does not exist."
+            }
             if ($ConfigurationType -in @('Script-App', 'Script-User') -and ([System.IO.Path]::GetExtension($Path) -ne '.ps1')) {
                 throw "For $ConfigurationType, Path must be the PowerShell deployment script (.ps1); '$Path' is not."
             }
 
-            $PackageFolder = Join-Path -Path $DestinationFolder -ChildPath $Name
+            # Validates Name and makes sure the package folder is a subfolder of the destination
+            $PackageFolder = Get-PackageFolderPath -DestinationFolder $DestinationFolder -Name $Name
             if (-not $PSCmdlet.ShouldProcess($PackageFolder, "Create $ConfigurationType deployment package")) {
                 Invoke-TelemetryCollection @TelemetryArgs -Stage End
                 return
             }
-            Initialize-PackageFolder -FolderPath $PackageFolder
+            if (Test-Path -LiteralPath $PackageFolder) {
+                if (-not (Confirm-FolderOverwrite -Path $PackageFolder)) {
+                    Write-Warning "The folder '$PackageFolder' already exists and was not changed."
+                    Invoke-TelemetryCollection @TelemetryArgs -Stage End
+                    return
+                }
+                Write-Verbose "Removing existing directory $PackageFolder and recreating it."
+                Remove-Item -LiteralPath $PackageFolder -Recurse -Force -ErrorAction Stop
+            }
+            Write-Verbose "Creating package folder $PackageFolder"
+            $null = New-Item -Path $PackageFolder -ItemType Directory -ErrorAction Stop
             $ConfigPath = Join-Path -Path $PackageFolder -ChildPath 'config.installer.json'
             $SetupFile = Join-Path -Path $PackageFolder -ChildPath 'Intune-I-MainInstaller.ps1'
 
@@ -277,9 +275,9 @@ function New-APFConfigDeployment {
                     Add-TemplateValue -Config $MainConfig -Property 'packagedby' -Value $PackagedBy
                     $MainConfig | ConvertTo-Json -Depth 10 | Set-Content -Path $ConfigPath -ErrorAction Stop
 
-                    Edit-DetectionScript -ScriptPath (Join-Path -Path $PackageFolder -ChildPath 'Intune-D-RegistryDetection.ps1') -Replacements @{
-                        '##NAME_TEMPLATE'    = $Name
-                        '##VERSION_TEMPLATE' = $Version.ToString()
+                    Set-TemplateToken -Path (Join-Path -Path $PackageFolder -ChildPath 'Intune-D-RegistryDetection.ps1') -Values @{
+                        NAME    = $Name
+                        VERSION = $Version.ToString()
                     }
                 }
                 { $_ -in "PowerShellProfiles", "Files" } {
@@ -299,10 +297,10 @@ function New-APFConfigDeployment {
                     Write-Verbose "Modifying template files with template parameters."
                     $MainConfig | ConvertTo-Json -Depth 10 | Set-Content -Path $ConfigPath -ErrorAction Stop
 
-                    Edit-DetectionScript -ScriptPath (Join-Path -Path $PackageFolder -ChildPath 'Intune-D-AppDetection.ps1') -Replacements @{
-                        '##NAME_TEMPLATE'    = $Name
-                        '##VERSION_TEMPLATE' = $Version.ToString()
-                        '##FILES_TEMPLATE'   = $FileNames
+                    Set-TemplateToken -Path (Join-Path -Path $PackageFolder -ChildPath 'Intune-D-AppDetection.ps1') -Values @{
+                        NAME    = $Name
+                        VERSION = $Version.ToString()
+                        FILES   = $FileNames
                     }
                 }
                 "StandAlone-Exe" {
@@ -323,10 +321,10 @@ function New-APFConfigDeployment {
                     Write-Verbose "Modifying template files with template parameters."
                     $MainConfig | ConvertTo-Json -Depth 10 | Set-Content -Path $ConfigPath -ErrorAction Stop
 
-                    Edit-DetectionScript -ScriptPath (Join-Path -Path $PackageFolder -ChildPath 'Intune-D-AppDetection.ps1') -Replacements @{
-                        '##NAME_TEMPLATE'     = $Name
-                        '##VERSION_TEMPLATE'  = $Version.ToString()
-                        '##FILENAME_TEMPLATE' = $FileName
+                    Set-TemplateToken -Path (Join-Path -Path $PackageFolder -ChildPath 'Intune-D-AppDetection.ps1') -Values @{
+                        NAME     = $Name
+                        VERSION  = $Version.ToString()
+                        FILENAME = $FileName
                     }
                 }
                 { $_ -in "Script-OS", "WindowsFeature" } {
@@ -360,9 +358,9 @@ function New-APFConfigDeployment {
                     Add-TemplateValue -Config $MainConfig -Property 'packagedby' -Value $PackagedBy
                     $MainConfig | ConvertTo-Json -Depth 10 | Set-Content -Path $ConfigPath -ErrorAction Stop
 
-                    Edit-DetectionScript -ScriptPath (Join-Path -Path $PackageFolder -ChildPath $DetectionFile) -Replacements @{
-                        '##NAME_TEMPLATE'    = $Name
-                        '##VERSION_TEMPLATE' = $Version.ToString()
+                    Set-TemplateToken -Path (Join-Path -Path $PackageFolder -ChildPath $DetectionFile) -Values @{
+                        NAME    = $Name
+                        VERSION = $Version.ToString()
                     }
                 }
                 { $_ -in "Script-App", "Script-User", "Custom" } {
@@ -390,9 +388,9 @@ function New-APFConfigDeployment {
                     Add-TemplateValue -Config $MainConfig -Property 'packagedby' -Value $PackagedBy
                     $MainConfig | ConvertTo-Json -Depth 10 | Set-Content -Path $ConfigPath -ErrorAction Stop
 
-                    Edit-DetectionScript -ScriptPath (Join-Path -Path $PackageFolder -ChildPath 'Intune-D-Detection.ps1') -Replacements @{
-                        '##NAME_TEMPLATE'    = $Name
-                        '##VERSION_TEMPLATE' = $Version.ToString()
+                    Set-TemplateToken -Path (Join-Path -Path $PackageFolder -ChildPath 'Intune-D-Detection.ps1') -Values @{
+                        NAME    = $Name
+                        VERSION = $Version.ToString()
                     }
                 }
                 "Standalone-Application" {
@@ -412,11 +410,11 @@ function New-APFConfigDeployment {
                     Write-Verbose "Modifying template files with template parameters."
                     $MainConfig | ConvertTo-Json -Depth 10 | Set-Content -Path $ConfigPath -ErrorAction Stop
 
-                    Edit-DetectionScript -ScriptPath (Join-Path -Path $PackageFolder -ChildPath 'Intune-D-AppDetection.ps1') -Replacements @{
-                        '##NAME_TEMPLATE'                 = $Name
-                        '##VERSION_TEMPLATE'              = $Version.ToString()
-                        '##LAUNCHERNAME_TEMPLATE'         = $LauncherName
-                        '##LAUNCHERRELATIVEPATH_TEMPLATE' = $LauncherRelativePath
+                    Set-TemplateToken -Path (Join-Path -Path $PackageFolder -ChildPath 'Intune-D-AppDetection.ps1') -Values @{
+                        NAME                 = $Name
+                        VERSION              = $Version.ToString()
+                        LAUNCHERNAME         = $LauncherName
+                        LAUNCHERRELATIVEPATH = $LauncherRelativePath
                     }
                 }
             }
