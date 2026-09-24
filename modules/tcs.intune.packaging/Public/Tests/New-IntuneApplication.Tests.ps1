@@ -27,6 +27,9 @@ Describe 'New-IntuneApplication' {
             AssignmentType        = 'All-Devices'
             Publisher             = 'Contoso'
         }
+        # Never download IntuneWinAppUtil.exe in tests
+        Mock -ModuleName tcs.intune.packaging Get-IntunePackagingTool { throw 'No downloads in tests.' }
+        Mock -ModuleName tcs.intune.packaging Confirm-ToolDownload { $false }
     }
 
     It 'Writes the JSON file with the default description filled in' {
@@ -91,7 +94,53 @@ Describe 'New-IntuneApplication' {
         $kept.JsonPath | Should -Exist
     }
 
-    It 'Refuses -Publish without the JSON file or package' {
+    It 'Refuses -Publish without the JSON file or package before building anything' {
         { New-IntuneApplication @Common -SourceFiles $Source -NoIntuneWin -Publish } | Should -Throw '*-NoJson or -NoIntuneWin*'
+        { New-IntuneApplication @Common -SourceFiles $Source -NoJson -Publish } | Should -Throw '*-NoJson or -NoIntuneWin*'
+        @(Get-ChildItem -LiteralPath $Output).Count | Should -Be 0
+    }
+
+    It 'Stages several source files and folders with their contents in a temporary folder that is removed' {
+        $tool = Join-Path -Path $TestDrive -ChildPath 'IntuneWinAppUtil.exe'
+        Set-Content -Path $tool -Value 'x'
+        $data = Join-Path -Path $Source -ChildPath 'data'
+        $null = New-Item -Path (Join-Path -Path $data -ChildPath 'nested') -ItemType Directory -Force
+        Set-Content -Path (Join-Path -Path $data -ChildPath 'nested/inner.txt') -Value 'x'
+        $script:Staged = $null
+        Mock -ModuleName tcs.intune.packaging Invoke-Executable {
+            $staging = [regex]::Match($Arguments, '-c "([^"]+)"').Groups[1].Value
+            $script:Staged = [PSCustomObject]@{
+                Folder = $staging
+                Inner  = Test-Path -LiteralPath (Join-Path -Path $staging -ChildPath 'data/nested/inner.txt')
+                Setup  = Test-Path -LiteralPath (Join-Path -Path $staging -ChildPath 'setup.exe')
+            }
+            Set-Content -Path (Join-Path -Path $Output -ChildPath 'setup.intunewin') -Value 'pkg'
+            [PSCustomObject]@{ ExitCode = 0 }
+        }
+        $result = New-IntuneApplication @Common -SourceFiles (Join-Path -Path $Source -ChildPath 'setup.exe'), $data -IntuneToolsPath $tool -NoJson
+        $result.IntuneWinPath | Should -Be (Join-Path -Path $Output -ChildPath 'setup.intunewin')
+        $script:Staged.Inner | Should -BeTrue
+        $script:Staged.Setup | Should -BeTrue
+        $script:Staged.Folder | Should -Not -BeLike "$Output*"
+        Test-Path -LiteralPath $script:Staged.Folder | Should -BeFalse
+        @(Get-ChildItem -LiteralPath $Output).Name | Should -Be @('setup.intunewin')
+    }
+
+    It 'Removes the staging folder when packaging fails' {
+        $tool = Join-Path -Path $TestDrive -ChildPath 'IntuneWinAppUtil.exe'
+        Set-Content -Path $tool -Value 'x'
+        $script:StagingFolder = $null
+        Mock -ModuleName tcs.intune.packaging Invoke-Executable {
+            $script:StagingFolder = [regex]::Match($Arguments, '-c "([^"]+)"').Groups[1].Value
+            [PSCustomObject]@{ ExitCode = 1; StandardError = 'failed' }
+        }
+        { New-IntuneApplication @Common -SourceFiles (Join-Path -Path $Source -ChildPath 'setup.exe'), (Join-Path -Path $Source -ChildPath 'config.xml') -IntuneToolsPath $tool -NoJson } | Should -Throw '*exit code 1*'
+        $script:StagingFolder | Should -Not -BeNullOrEmpty
+        Test-Path -LiteralPath $script:StagingFolder | Should -BeFalse
+    }
+
+    It 'Rejects an application name that is not a valid file name' {
+        $Common.ApplicationName = '../MyApp'
+        { New-IntuneApplication @Common -SourceFiles $Source -NoIntuneWin } | Should -Throw '*cannot be used in a file or folder name*'
     }
 }

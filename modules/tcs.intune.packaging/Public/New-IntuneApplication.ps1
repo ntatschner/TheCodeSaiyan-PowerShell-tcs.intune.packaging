@@ -12,8 +12,9 @@ function New-IntuneApplication {
         The name of the application to be packaged.
 
     .PARAMETER SourceFiles
-        The source files for the package: either one folder that contains all files, or one or more files.
-        When several files are given they are copied to "<OutputFolder>/<ApplicationName>.<Version>" first.
+        The source files for the package: either one folder that contains all files, or one or more files
+        and folders. When several are given they are copied (folders with their contents) to a temporary
+        staging folder, which is removed after the .intunewin package is created.
 
     .PARAMETER MainInstallerFileName
         The file name of the main installer (for example setup.exe or installer.msi). It must be one of
@@ -217,6 +218,13 @@ function New-IntuneApplication {
         Invoke-TelemetryCollection @TelemetryArgs -Stage Start -ClearTimer
         $TelemetryFailed = $false
         try {
+            # Checked before anything is built: publishing needs both files
+            if ($Publish -and ($NoJson -or $NoIntuneWin)) {
+                throw 'Publish needs both the JSON file and the .intunewin package; do not combine it with -NoJson or -NoIntuneWin.'
+            }
+            # The JSON file is named "<ApplicationName>.<Version>.json" in OutputFolder
+            Assert-SafePathSegment -Name "$ApplicationName.$Version" -ParameterName 'ApplicationName and Version' -AllowWildcard
+
             #region PathValidation
             if ($LogoPath) {
                 if (-not (Test-IntuneLogoImage -Path $LogoPath -ErrorAction Stop)) {
@@ -299,11 +307,11 @@ function New-IntuneApplication {
             if (-not $NoJson) {
                 Write-Verbose "Creating JSON file for $ApplicationName"
                 $JSONOutputPath = Join-Path -Path $OutputFolder -ChildPath "$ApplicationName.$Version.json"
-                if ((Test-Path -Path $JSONOutputPath) -and -not $Overwrite) {
+                if ((Test-Path -LiteralPath $JSONOutputPath) -and -not $Overwrite) {
                     throw "The JSON file '$JSONOutputPath' already exists, use -Overwrite to replace it."
                 }
                 if ($PSCmdlet.ShouldProcess($JSONOutputPath, 'Write application JSON')) {
-                    New-IntuneAppJSON -AppParams $ParameterSplat | Set-Content -Path $JSONOutputPath -Force -ErrorAction Stop
+                    New-IntuneAppJSON -AppParams $ParameterSplat | Set-Content -LiteralPath $JSONOutputPath -Force -ErrorAction Stop
                 }
             }
             #endregion CreateJSON
@@ -313,53 +321,56 @@ function New-IntuneApplication {
                 Write-Verbose "Creating .intunewin file for $ApplicationName"
                 $MainInstallerFileFullPath = Join-Path -Path $MainInstallerFilePath -ChildPath $MainInstallerFileName
                 $IntunewinFullPath = Join-Path -Path $OutputFolder -ChildPath "$([System.IO.Path]::GetFileNameWithoutExtension($MainInstallerFileName)).intunewin"
-                if ((Test-Path -Path $IntunewinFullPath) -and -not $Overwrite) {
+                if ((Test-Path -LiteralPath $IntunewinFullPath) -and -not $Overwrite) {
                     throw "The .intunewin file '$IntunewinFullPath' already exists, use -Overwrite to replace it."
                 }
                 if ($PSCmdlet.ShouldProcess($IntunewinFullPath, 'Create .intunewin package')) {
-                    # IntuneWinAppUtil.exe needs one source folder: copy multiple source files to a staging folder
-                    if ($SourceFiles.Count -gt 1) {
-                        $StagingFolder = New-Item -Path (Join-Path -Path $OutputFolder -ChildPath "$ApplicationName.$Version") -ItemType Directory -Force -ErrorAction Stop
-                        Copy-Item -Path $SourceFiles -Destination $StagingFolder.FullName -Force -ErrorAction Stop
-                        $SourceFolder = $StagingFolder.FullName
-                        $MainInstallerFileFullPath = Join-Path -Path $SourceFolder -ChildPath $MainInstallerFileName
-                    }
-                    elseif (Test-Path -Path $SourceFiles[0] -PathType Container) {
-                        $SourceFolder = (Resolve-Path -Path $SourceFiles[0]).ProviderPath
-                    }
-                    else {
-                        $SourceFolder = $MainInstallerFilePath
-                    }
+                    try {
+                        # IntuneWinAppUtil.exe needs one source folder: copy multiple source files (and folders,
+                        # with their contents) to a temporary staging folder outside OutputFolder
+                        if ($SourceFiles.Count -gt 1) {
+                            $StagingFolder = New-Item -Path (Join-Path -Path ([System.IO.Path]::GetTempPath()) -ChildPath "tcs-intune-staging-$([guid]::NewGuid().ToString('N'))") -ItemType Directory -Force -ErrorAction Stop
+                            Copy-Item -Path $SourceFiles -Destination $StagingFolder.FullName -Recurse -Force -ErrorAction Stop
+                            $SourceFolder = $StagingFolder.FullName
+                            $MainInstallerFileFullPath = Join-Path -Path $SourceFolder -ChildPath $MainInstallerFileName
+                        }
+                        elseif (Test-Path -Path $SourceFiles[0] -PathType Container) {
+                            $SourceFolder = (Resolve-Path -Path $SourceFiles[0]).ProviderPath
+                        }
+                        else {
+                            $SourceFolder = $MainInstallerFilePath
+                        }
 
-                    $ToolParameters = @{
-                        SourceFolder  = $SourceFolder
-                        SetupFile     = $MainInstallerFileFullPath
-                        OutputFolder  = $OutputFolder
-                        AllowDownload = $AllowDownload
-                        Overwrite     = $true
+                        $ToolParameters = @{
+                            SourceFolder  = $SourceFolder
+                            SetupFile     = $MainInstallerFileFullPath
+                            OutputFolder  = $OutputFolder
+                            AllowDownload = $AllowDownload
+                            Overwrite     = $true
+                        }
+                        # A missing IntuneToolsPath falls back to the per-user tool folder (and its download policy)
+                        if (Test-Path -LiteralPath $IntuneToolsPath -PathType Leaf) {
+                            $ToolParameters['ToolPath'] = $IntuneToolsPath
+                        }
+                        $IntunewinFullPath = (Invoke-IntuneWinAppUtil @ToolParameters -ErrorAction Stop).FullName
                     }
-                    # A missing IntuneToolsPath falls back to the per-user tool folder (and its download policy)
-                    if (Test-Path -LiteralPath $IntuneToolsPath -PathType Leaf) {
-                        $ToolParameters['ToolPath'] = $IntuneToolsPath
+                    finally {
+                        # The staging copy is only needed while the package is built
+                        if ($StagingFolder) {
+                            Remove-Item -LiteralPath $StagingFolder.FullName -Recurse -Force -ErrorAction SilentlyContinue
+                        }
                     }
-                    $IntunewinFullPath = (Invoke-IntuneWinAppUtil @ToolParameters -ErrorAction Stop).FullName
                 }
             }
             #endregion CreateIntuneWin
 
             $App = $null
             if ($Publish) {
-                if ($NoJson -or $NoIntuneWin) {
-                    throw 'Publish needs both the JSON file and the .intunewin package; do not combine it with -NoJson or -NoIntuneWin.'
-                }
                 if ($PSCmdlet.ShouldProcess($ApplicationName, 'Publish to Intune')) {
                     $App = Publish-IntuneAppPackage -IntuneAppJSONPath $JSONOutputPath -IntuneWinPath $IntunewinFullPath -Force:$Overwrite -ErrorAction Stop
                     if (-not $NoCleanUp) {
                         Write-Verbose 'Removing the published JSON file and .intunewin package.'
-                        Remove-Item -Path $JSONOutputPath, $IntunewinFullPath -Force -ErrorAction SilentlyContinue
-                        if ($StagingFolder) {
-                            Remove-Item -Path $StagingFolder.FullName -Recurse -Force -ErrorAction SilentlyContinue
-                        }
+                        Remove-Item -LiteralPath $JSONOutputPath, $IntunewinFullPath -Force -ErrorAction SilentlyContinue
                         $JSONOutputPath = $null
                         $IntunewinFullPath = $null
                     }
