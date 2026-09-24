@@ -35,16 +35,20 @@ MSI Database Filename
 
 ```yaml
 Type:Object
-Parameter Sets:   (All)
+Parameter Sets:     (All)
 Aliases: Filename, MSIDbName, Database,Msi
 Required: True
-Position: 0Default
+Position: 0DefaultDefault
 Default value: None
+Default value: NoneDefaultDefault
 Default value: None
 Accept pipeline input: False
 input:False
+input:False
+input:FalseAcceptpipeline
 Accept pipeline input: True (ByPropertyName, ByValue)
 Accept wildcard characters: False
+characters:FalseAcceptwildcard
 Accept wildcard characters: False
 ```
 
@@ -53,17 +57,22 @@ Accept wildcard characters: False
 
 ```yaml
 Type:ActionPreference
-Parameter Sets:   (All)
+Parameter Sets:     (All)
 Aliases:proga
 Required: False
 Position:Named
 Default value: None
 Default value: None
+Default value: NoneDefaultDefault
+Default value: NoneDefaultDefault
 Default value: None
 Accept pipeline input: False
 input:False
+input:False
+input:FalseAcceptpipeline
 Accept pipeline input: False
 Accept wildcard characters: False
+characters:FalseAcceptwildcard
 Accept wildcard characters: False
 ```
 

@@ -1,57 +1,52 @@
-TOPIC
+﻿TOPIC
     about_tcs.intune.packaging
 
+    ABOUT TOPIC NOTE:
+    The first header of the about topic should be the topic name.
+    The second header contains the lookup name used by the help system.
+    
+    IE:
+    # Some Help Topic Name
+    ## SomeHelpTopicFileName
+    
+    This will be transformed into the text file
+    as `about_SomeHelpTopicFileName`.
+    Do not include file extensions.
+    The second header should have no spaces.
+
 SHORT DESCRIPTION
-    Functions to build, package and deploy application and configuration
-    packages for Microsoft Intune.
+    {{ Short Description Placeholder }}
+
+    ABOUT TOPIC NOTE:
+    About topics can be no longer than 80 characters wide when rendered to text.
+    Any topics greater than 80 characters will be automatically wrapped.
+    The generated about topic will be encoded UTF-8.
 
 LONG DESCRIPTION
-    tcs.intune.packaging creates Win32 .intunewin packages with Microsoft's
-    IntuneWinAppUtil.exe, Application Packaging Framework (APF) installer
-    packages, Win32 app detection and requirement rules, and the Entra ID
-    groups used to deploy an application.
+    {{ Long Description Placeholder }}
 
-    The module needs Windows (Windows PowerShell 5.1 or PowerShell 7) and
-    tcs.core 0.3.0 or later. Commands that talk to Entra ID or Intune also
-    need the Microsoft.Entra or Microsoft.Graph.Authentication modules.
-
-    APF packages are built from the installer scripts in the module's
-    Public/Templates folder. Each package contains Intune-I-MainInstaller.ps1
-    (install command: powershell.exe -ExecutionPolicy RemoteSigned -File
-    Intune-I-MainInstaller.ps1, uninstall: the same with -Uninstall),
-    optional pre- and post-install scripts, config.installer.json and a
-    detection script.
-
-    IntuneWinAppUtil.exe is kept per user in
-    %LOCALAPPDATA%\tcs.intune.packaging.
+Optional Subtopics
+    {{ Optional Subtopic Placeholder }}
 
 EXAMPLES
-    New-APFDeployment -Path C:\Installers\MyApp.msi -DestinationFolder C:\Packages -CreateIntuneWinPackage
-
-    New-APFConfigDeployment -ConfigurationType Registry -Name "My Settings" -Version 1.0.0.0 -RegistryValue "HKLM:\Software,MySoftware,MyValue,String,MyData,ADD"
-
-    New-ApplicationDeploymentGroup -ApplicationName "Google Chrome"
+    {{ Code or descriptive examples of how to leverage the functions described.
+    }}
 
 NOTE
-    Settings (update warnings, telemetry) are managed with
-    Set-ModuleConfig -ModuleName tcs.intune.packaging.
+    {{ Note Placeholder - Additional information that a user needs to know.}}
 
-    Every exported command reports anonymous usage telemetry through
-    tcs.core (command name, duration, success, exception type, PowerShell and
-    OS version and a random installation ID). No user, machine, path or error
-    text is sent. Nothing is sent until a TelemetryUri is configured. Turn it
-    off with -Telemetry $false or the TCS_TELEMETRY_OPTOUT=1 environment
-    variable.
-
-    Publish-IntuneAppPackage and New-IntuneWin32Application create Win32 apps
-    in Intune and upload their content with Microsoft Graph. Connect first
-    with Connect-MgGraph -Scopes DeviceManagementApps.ReadWrite.All.
+TROUBLESHOOTING NOTE
+    {{ Troubleshooting Placeholder - Warns users of bugs}}
+    {{ Explains behavior that is likely to change with fixes }}
 
 SEE ALSO
-    https://github.com/ntatschner/TheCodeSaiyan-PowerShell-tcs.intune.packaging
+    {{ See also placeholder }}
+    {{ You can also list related articles, blogs, and video URLs. }}
 
 KEYWORDS
-    - Intune
-    - IntuneWin
-    - Win32
-    - APF
+    {{List alternate names or titles for this topic that readers might use.}}
+    - {{ Keyword Placeholder }}
+    - {{ Keyword Placeholder }}
+    - {{ Keyword Placeholder }}
+    - {{ Keyword Placeholder }}
+
