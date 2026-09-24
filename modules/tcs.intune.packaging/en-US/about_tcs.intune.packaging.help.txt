@@ -34,9 +34,14 @@ EXAMPLES
 
 NOTE
     Settings (update warnings, telemetry) are managed with
-    Set-ModuleConfig -ModuleName tcs.intune.packaging. Telemetry is anonymous;
-    turn it off with -Telemetry $false or the TCS_TELEMETRY_OPTOUT=1
-    environment variable.
+    Set-ModuleConfig -ModuleName tcs.intune.packaging.
+
+    Every exported command reports anonymous usage telemetry through
+    tcs.core (command name, duration, success, exception type, PowerShell and
+    OS version and a random installation ID). No user, machine, path or error
+    text is sent. Nothing is sent until a TelemetryUri is configured. Turn it
+    off with -Telemetry $false or the TCS_TELEMETRY_OPTOUT=1 environment
+    variable.
 
     Publish-IntuneAppPackage and New-IntuneWin32Application create Win32 apps
     in Intune and upload their content with Microsoft Graph. Connect first
