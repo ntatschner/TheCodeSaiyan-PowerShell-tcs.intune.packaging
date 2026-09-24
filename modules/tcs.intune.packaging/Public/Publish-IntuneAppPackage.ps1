@@ -148,7 +148,7 @@ function Publish-IntuneAppPackage {
         Invoke-TelemetryCollection @TelemetryArgs -Stage Start -ClearTimer
         try {
             $GraphContext = Assert-MgGraphConnection
-            $AppJson = Read-IntuneAppJson -Path $IntuneAppJSONPath
+            $AppJson = Read-IntuneAppJson -Path $IntuneAppJSONPath -IgnoreRules:$PSBoundParameters.ContainsKey('Rules')
             $AppParameters = $AppJson.AppParameters
             $DisplayName = $AppJson.DisplayName
             if (-not $PSBoundParameters.ContainsKey('Rules')) {

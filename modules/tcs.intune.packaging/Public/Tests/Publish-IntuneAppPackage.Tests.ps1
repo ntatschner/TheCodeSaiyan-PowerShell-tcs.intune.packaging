@@ -68,6 +68,14 @@ Describe 'Publish-IntuneAppPackage' {
         Should -Invoke -ModuleName tcs.intune.packaging New-IntuneWin32Application -Times 1 -Exactly -ParameterFilter { $Rules[0].productCode -eq '{X}' }
     }
 
+    It 'Does not read the rules in the JSON file when -Rules is used' {
+        $json = Join-Path -Path $TestDrive -ChildPath 'oldrules-override.json'
+        @{ ApplicationParameters = @{ ApplicationName = 'App'; Description = 'D'; Publisher = 'P'; InstallCommand = 'i'; UninstallCommand = 'u'; DetectionRuleConfig = @{ Type = 'File' } } } | ConvertTo-Json -Depth 5 | Set-Content -Path $json
+        $rule = @{ '@odata.type' = '#microsoft.graph.win32LobAppProductCodeRule'; ruleType = 'detection'; productCode = '{X}' }
+        $null = Publish-IntuneAppPackage -IntuneAppJSONPath $json -IntuneWinPath $script:Package -NoTenantDetails -Rules $rule
+        Should -Invoke -ModuleName tcs.intune.packaging New-IntuneWin32Application -Times 1 -Exactly -ParameterFilter { $Rules[0].productCode -eq '{X}' }
+    }
+
     It 'Rejects rule configuration that was not made with New-IntuneWin32Rule' {
         $json = Join-Path -Path $TestDrive -ChildPath 'oldrules.json'
         @{ ApplicationParameters = @{ ApplicationName = 'App'; DetectionRuleConfig = @{ Type = 'File' } } } | ConvertTo-Json -Depth 5 | Set-Content -Path $json
