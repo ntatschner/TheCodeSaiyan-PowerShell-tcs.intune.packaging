@@ -18,7 +18,7 @@ $StorageFolderProfilePath = $($InstallConfig.directory)
 $StorageFolderFullPath = Join-Path -Path $StorageFolderNamePath -ChildPath "$StorageFolderProfilePath"
 $InvalidChars = [System.IO.Path]::GetInvalidFileNameChars()
 $LogName = "APF_$($InstallConfig.name)_PowerShellProfiles.log"
-$InvalidChars | % { $LogName = $LogName -replace [regex]::Escape($_), "" }
+$InvalidChars | ForEach-Object { $LogName = $LogName -replace [regex]::Escape($_), "" }
 $LoggingPath = Join-Path -Path (Join-Path -Path $ConfigBase -ChildPath "\$APFBase\UserLogs\") -ChildPath $LogName
 $ExistingConfig = $false
 $StartTime = Get-Date
@@ -29,7 +29,7 @@ try {
     Import-Module -Name "$PSScriptRoot\Write-DeploymentLog.ps1" -Force -ErrorAction Stop
 }
 Catch {
-    Write-Host "Failed to import the logging function with error: $_"
+    Write-Error -Message "Failed to import the logging function with error: $_"
     exit 1
 }
 #endregion Logging Function
@@ -187,7 +187,7 @@ else {
         }
         Write-DeploymentLog -Message "Copying files to storage folder $($StorageFolderFullPath)" -MessageType "Info" -LogPath $LoggingPath
         try {
-            
+
             if ([string]::IsNullOrEmpty($InstallConfig.files) -eq $false) {
                 Write-DeploymentLog -Message "Copying files: $($InstallConfig.files -Replace ',', ' ,')." -MessageType "Info" -LogPath $LoggingPath
                 foreach ($a in $($InstallConfig.files -Split ',')) {
@@ -212,7 +212,7 @@ else {
                 Copy-Item -Path "$ConfigBase\$APFBase\AppConfigs\$($InstallConfig.name)_config.installer.json" -Destination "$ConfigBase\$APFBase\AppConfigs\$($InstallConfig.name)_config.installer.json.bak" -Force
                 Write-DeploymentLog -Message "Updating the config file for the installed application" -MessageType "Info" -LogPath $LoggingPath
                 $InstallConfig | ConvertTo-Json | Set-Content -Path "$ConfigBase\$APFBase\AppConfigs\$($InstallConfig.name)_config.installer.json"
-            }       
+            }
         }
         catch {
             Write-DeploymentLog -Message "Failed to copy $($InstallConfig.filename) to storage folder $($StorageFolderFullPath), breaking.." -MessageType "Error" -LogPath $LoggingPath

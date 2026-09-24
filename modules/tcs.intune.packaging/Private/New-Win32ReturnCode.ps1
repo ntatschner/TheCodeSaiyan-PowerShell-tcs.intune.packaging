@@ -1,4 +1,6 @@
 function New-Win32ReturnCode {
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSUseShouldProcessForStateChangingFunctions', '',
+        Justification = 'Only builds an in-memory hashtable; no system state is changed.')]
     [CmdletBinding()]
     [OutputType([Hashtable])]
     param (
@@ -9,10 +11,9 @@ function New-Win32ReturnCode {
         [string]$ReturnMessage
     )
     process {
-        $hashTable = @{
+        @{
             "returnCode" = $ReturnCode
-            "type" = $ReturnMessage
+            "type"       = $ReturnMessage
         }
-        return $hashTable
     }
 }

@@ -12,7 +12,7 @@ $APFBase = "APF"
 $InvalidChars = [System.IO.Path]::GetInvalidFileNameChars()
 $Extention = $InstallConfig.filename -split "\." | Select-Object -Last 1
 $LogName = $InstallConfig.filename.Replace($Extention, "log")
-$InvalidChars | % { $LogName = $LogName -replace [regex]::Escape($_), "" }
+$InvalidChars | ForEach-Object { $LogName = $LogName -replace [regex]::Escape($_), "" }
 $LoggingPath = Join-Path -Path (Join-Path -Path $ConfigBase -ChildPath "\$APFBase\UserLogs\") -ChildPath $LogName
 $ShortcutBasePath = if ($InstallConfig.target -eq "user") { "$((New-Object -ComObject Shell.Application).Namespace(0x10).Self.Path)" } else { "C:\Users\Public\Desktop" }
 $ExistingConfig = $false
@@ -24,7 +24,7 @@ try {
     Import-Module -Name "$PSScriptRoot\Write-DeploymentLog.ps1" -Force -ErrorAction Stop
 }
 Catch {
-    Write-Host "Failed to import the logging function with error: $_"
+    Write-Error -Message "Failed to import the logging function with error: $_"
     exit 1
 }
 #endregion Logging Function
@@ -263,14 +263,14 @@ else {
                     # Get all the Start Menu Shotcuts just created so we can create the defined shortcut in the config file
                     $TimeLimit = (Get-Date).AddSeconds(-5)
                     $StartMenuShortcuts = Get-ChildItem -Path "$env:APPDATA\Microsoft\Windows\Start Menu\Programs" -Recurse -Include "*.lnk" | Where-Object { $_.CreationTime -gt $TimeLimit } | Where-Object { $_.Name -notmatch "Uninstall|remove|readme|guide" }
-                    if ($StartMenuShortcuts -eq $null) {
+                    if ($null -eq $StartMenuShortcuts) {
                         Write-DeploymentLog -Message "No Start Menu Shortcuts found" -MessageType "Info" -LogPath $LoggingPath
                     }
                     else {
                         foreach ($Shortcut in $StartMenuShortcuts) {
                             $WshShell = New-Object -ComObject WScript.Shell
                             $ShortcutObject = $WshShell.CreateShortcut($Shortcut)
-                            try {                            
+                            try {
                                 Write-DeploymentLog -Message "Creating shortcut $($Shortcut.BaseName)" -MessageType "Info" -LogPath $LoggingPath
                                 $ShortcutFullPath = Join-Path -Path $ShortcutBasePath -ChildPath "$($Shortcut.BaseName).lnk"
                                 $WshShell = New-Object -ComObject WScript.Shell
@@ -297,7 +297,7 @@ else {
                     Write-DeploymentLog -Message "Updating the config file for the installed application" -MessageType "Info" -LogPath $LoggingPath
                     $InstallConfig | ConvertTo-Json | Set-Content -Path "$ConfigBase\$APFBase\AppConfigs\$($InstallConfig.name)_config.installer.json"
                 }
-            }          
+            }
         }
         Catch {
             Write-DeploymentLog -Message "Failed to install $($InstallConfig.name), Version $($InstallConfig.version) with error: $_" -MessageType "Error" -LogPath $LoggingPath

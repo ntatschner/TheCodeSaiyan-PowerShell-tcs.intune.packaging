@@ -11,12 +11,11 @@ $ConfigBase = if ($InstallConfig.target -eq "user") { $env:APPDATA } else { ${en
 $APFBase = "APF"
 $APFFullBase = Join-Path -Path $ConfigBase -ChildPath $APFBase
 $StorageFolderBase = "PersistentStorage"
-$StorageFolderName = $(if ([string]::IsNullOrEmpty($ConfigBase.name)) { "registry" } { "$($ConfigBase.name)" })
+$StorageFolderName = $(if ([string]::IsNullOrEmpty($ConfigBase.name)) { "registry" } else { "$($ConfigBase.name)" })
 $StorageFolderFullPath = Join-Path -Path $APFFullBase -ChildPath "$StorageFolderBase\$StorageFolderName"
 $InvalidChars = [System.IO.Path]::GetInvalidFileNameChars()
-$Extention = $InstallConfig.filename -split "\." | Select-Object -Last 1
-$LogName = $InstallConfig.filename.Replace($Extention, "log")
-$InvalidChars | % { $LogName = $LogName -replace [regex]::Escape($_), "" }
+$LogName = "APF_$($InstallConfig.name)_Registry.log"
+$InvalidChars | ForEach-Object { $LogName = $LogName -replace [regex]::Escape($_), "" }
 $LoggingPath = Join-Path -Path (Join-Path -Path $ConfigBase -ChildPath "\$APFBase\UserLogs\") -ChildPath $LogName
 $ExistingConfig = $false
 $StartTime = Get-Date
@@ -27,7 +26,7 @@ try {
     Import-Module -Name "$PSScriptRoot\Write-DeploymentLog.ps1" -Force -ErrorAction Stop
 }
 Catch {
-    Write-Host "Failed to import the logging function with error: $_"
+    Write-Error -Message "Failed to import the logging function with error: $_"
     exit 1
 }
 #endregion Logging Function
@@ -83,9 +82,9 @@ if (-not [string]::IsNullOrEmpty($InstallConfig.precommandfile)) {
 Write-DeploymentLog -Message "Starting deployment of $($InstallConfig.name) registry entries, Version $($InstallConfig.version)" -MessageType "Info" -LogPath $LoggingPath
 # Log the config import
 Write-DeploymentLog -Message "Imported the following configuration: `n$($InstallConfig | ConvertTo-Json -Depth 5)" -MessageType "Info" -LogPath $LoggingPath
-    
+
 # Create storage folder if it dosent exist
-    
+
 if (-not (Test-Path -Path $StorageFolderFullPath)) {
     Write-DeploymentLog -Message "Creating the APF storage folder" -MessageType "Info" -LogPath $LoggingPath
     New-Item -Path $StorageFolderFullPath -ItemType Directory -Force
@@ -110,20 +109,23 @@ Write-DeploymentLog -Message "Processing the Registry CSV File, found $($Registr
 # Loop through the CSV File and make the registry modifications
 foreach ($RegistryEntry in $RegistryData) {
     $FullKeyPath = "$($RegistryEntry.RegistryPath)\$($RegistryEntry.KeyName)"
-    $FullKeyPathWithKey = "$($FullKayPath)\$($RegistryEntry.ValueName)"
+    $FullKeyPathWithKey = "$($FullKeyPath)\$($RegistryEntry.ValueName)"
     Write-DeploymentLog -Message "Processing $($RegistryEntry.State) of $($RegistryEntry.ValueName) in $($FullKeyPath)" -MessageType "Info" -LogPath $LoggingPath
     try {
         switch -Regex ($RegistryEntry.State) {
             "MODIFY|ADD" {
-                if (Test-Path -Path "$($RegistryEntry.RegistryPath)\$($RegistryEntry.KeyName)") {
-                    $RegistryEntry.OldValue = Get-ItemProperty -Path "$($FullKayPath)\$($RegistryEntry.ValueName)" -Name $RegistryEntry.ValueData
+                if (Test-Path -Path $FullKeyPath) {
+                    $RegistryEntry.OldValue = (Get-ItemProperty -Path $FullKeyPath -Name $RegistryEntry.ValueName -ErrorAction SilentlyContinue).$($RegistryEntry.ValueName)
                 }
                 elseif ($RegistryEntry.State -eq "MODIFY") {
                     $RegistryEntry.Result = "Failed"
                     $RegistryEntry.Error = "Path not found"
                     continue
                 }
-                switch ($RegistryEntry.Type) {
+                if (-not (Test-Path -Path $FullKeyPath)) {
+                    $null = New-Item -Path $FullKeyPath -Force -ErrorAction Stop
+                }
+                switch ($RegistryEntry.ValueType) {
                     "String" { Set-ItemProperty -Path $FullKeyPath -Name $RegistryEntry.ValueName -Value $RegistryEntry.ValueData -Force }
                     "DWord" { Set-ItemProperty -Path $FullKeyPath -Name $RegistryEntry.ValueName -Value $RegistryEntry.ValueData -Type DWord -Force }
                     "QWord" { Set-ItemProperty -Path $FullKeyPath -Name $RegistryEntry.ValueName -Value $RegistryEntry.ValueData -Type QWord -Force }
@@ -149,6 +151,15 @@ foreach ($RegistryEntry in $RegistryData) {
         $RegistryEntry.Error = $_.Exception.Message
     }
 }
+
+# Save the results next to the local copy of the CSV file; the detection script reads the Result column
+$RegistryData | Export-Csv -Path "$StorageFolderFullPath\$($InstallConfig.name)_Registry.csv" -NoTypeInformation -Force
+
+# Save the installed configuration; the detection script checks its version
+if ($ExistingConfig -eq $true) {
+    Copy-Item -Path "$ConfigBase\$APFBase\AppConfigs\$($InstallConfig.name)_config.installer.json" -Destination "$ConfigBase\$APFBase\AppConfigs\$($InstallConfig.name)_config.installer.json.bak" -Force
+}
+$InstallConfig | ConvertTo-Json | Set-Content -Path "$ConfigBase\$APFBase\AppConfigs\$($InstallConfig.name)_config.installer.json"
 
 Write-DeploymentLog -Message "Installation of $($InstallConfig.name), Version $($InstallConfig.version) completed successfully" -MessageType "Info" -LogPath $LoggingPath
 $Script:TimeTaken = $(Get-Date) - $StartTime

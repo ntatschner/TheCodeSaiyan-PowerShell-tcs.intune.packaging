@@ -1,31 +1,31 @@
-# This function takes in a Hashtable of parameters and creates a JSON object for an Intune Application
+# Takes a hashtable of application parameters and returns the JSON document for an Intune application
 function New-IntuneAppJSON {
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSUseShouldProcessForStateChangingFunctions', '',
+        Justification = 'Only builds a JSON string; no system state is changed.')]
     [CmdletBinding()]
+    [OutputType([string])]
     param (
         [Parameter(Mandatory = $true)]
         [hashtable]$AppParams
     )
-    
-    begin {
-        # First Split out the required parameters for the .intunewin file
-        $IntuneWinParams = @{
-            "MainInstallerFileName" = $AppParams.MainInstallerFileName
-            "SourceFiles"           = $AppParams.SourceFiles
-            "OutputFolder"          = $AppParams.OutputFolder
-        }
-        # Remove the parameters from the hashtable
-        $AppParams.Remove("MainInstallerFileName")
-        $AppParams.Remove("SourceFiles")
-        $AppParams.Remove("OutputFolder")
+
+    # Copy the hashtable so the caller's splat is not changed
+    $ApplicationParameters = @{}
+    foreach ($Key in $AppParams.Keys) {
+        $ApplicationParameters[$Key] = $AppParams[$Key]
     }
-    
-    process {
-        # Create PS Object to build multidimensional array
-        $ObjectParams = @{
-            "ApplicationParameters" = $AppParams
-            "IntuneWinParameters"   = $IntuneWinParams
-        }
-        $Object = New-Object -TypeName PSObject -Property $ObjectParams
-        $Object | ConvertTo-Json
+    # Split out the parameters for the .intunewin file
+    $IntuneWinParams = @{
+        "MainInstallerFileName" = $ApplicationParameters['MainInstallerFileName']
+        "SourceFiles"           = $ApplicationParameters['SourceFiles']
+        "OutputFolder"          = $ApplicationParameters['OutputFolder']
     }
+    foreach ($Key in 'MainInstallerFileName', 'SourceFiles', 'OutputFolder') {
+        $ApplicationParameters.Remove($Key)
+    }
+
+    [PSCustomObject]@{
+        ApplicationParameters = $ApplicationParameters
+        IntuneWinParameters   = $IntuneWinParams
+    } | ConvertTo-Json -Depth 10
 }

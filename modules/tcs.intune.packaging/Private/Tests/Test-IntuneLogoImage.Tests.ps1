@@ -1,40 +1,44 @@
 BeforeAll {
-	$TestPath = Split-Path -Parent -Path $PSScriptRoot
-
-	$FunctionFileName = (Split-Path -Leaf $PSCommandPath ) -replace '\.Tests\.', '.'
-
-	# You can use this Variable to call your function via it's name or ignore/remove as required
-	$FunctionName = $FunctionFileName.Replace('.ps1', '')
-	
-	. $(Join-Path -Path $TestPath -ChildPath $FunctionFileName)
-}
-Describe -Name "Performing basic validation test on function $FunctionFileName" {
-	It "Function $FunctionFileName - Testing Command Output Object" {
-		# test if the image at the specified path is a valid Intune logo image
-		
-	}
+    $env:TCS_CONFIG_ROOT = Join-Path -Path $TestDrive -ChildPath 'config'
+    $env:TCS_SKIP_UPDATE_CHECK = '1'
+    $env:TCS_TELEMETRY_OPTOUT = '1'
+    $ModuleRoot = Split-Path -Path (Split-Path -Path $PSScriptRoot -Parent) -Parent
+    Import-Module -Name (Join-Path -Path $ModuleRoot -ChildPath 'tcs.intune.packaging.psd1') -Force
 }
 
-Describe -Tags 'PSSA' -Name 'Testing against PSScriptAnalyzer rules' {
-	BeforeAll {
-		$ScriptAnalyzerSettings = Get-Content -Path (Join-Path -Path (Get-Location) -ChildPath 'PSScriptAnalyzerSettings.psd1') | Out-String | Invoke-Expression
-		$AnalyzerIssues = Invoke-ScriptAnalyzer -Path "$TestPath\$FunctionFileName" -Settings $ScriptAnalyzerSettings
-		$ScriptAnalyzerRuleNames = Get-ScriptAnalyzerRule | Select-Object -ExpandProperty RuleName
-	}
+AfterAll {
+    Remove-Module -Name tcs.intune.packaging -Force -ErrorAction SilentlyContinue
+}
+BeforeDiscovery {
+    $OnWindows = [System.Environment]::OSVersion.Platform -eq 'Win32NT'
+}
 
-	foreach ($Rule in $ScriptAnalyzerRuleNames) {
-		if ($ScriptAnalyzerSettings.excluderules -notcontains $Rule) {
-			It "Function $FunctionFileName should pass $Rule" {
-				$Failures = $AnalyzerIssues | Where-Object -Property RuleName -EQ -Value $rule
-				($Failures | Measure-Object).Count | Should -Be 0
-			}
-		}
-		else {
-			# We still want it in the tests, but since it doesn't actually get tested we will skip
-			It "Function $FunctionFileName should pass $Rule" -Skip {
-				$Failures = $AnalyzerIssues | Where-Object -Property RuleName -EQ -Value $rule
-				($Failures | Measure-Object).Count | Should -Be 0
-			}
-		}
-	}
+Describe 'Test-IntuneLogoImage' {
+    It 'Returns false for a missing file' {
+        InModuleScope tcs.intune.packaging -Parameters @{ Path = (Join-Path -Path $TestDrive -ChildPath 'missing.png') } {
+            Test-IntuneLogoImage -Path $Path -ErrorAction SilentlyContinue | Should -BeFalse
+        }
+    }
+
+    It 'Returns false for a file that is not a PNG or JPG' {
+        $file = Join-Path -Path $TestDrive -ChildPath 'logo.gif'
+        Set-Content -Path $file -Value 'x'
+        InModuleScope tcs.intune.packaging -Parameters @{ Path = $file } {
+            Test-IntuneLogoImage -Path $Path -ErrorAction SilentlyContinue | Should -BeFalse
+        }
+    }
+
+    It 'Checks the image size (<Size> pixels)' -Skip:(-not $OnWindows) -ForEach @(
+        @{ Size = 64; Expected = $true }
+        @{ Size = 300; Expected = $false }
+    ) {
+        Add-Type -AssemblyName System.Drawing
+        $file = Join-Path -Path $TestDrive -ChildPath "logo$Size.jpeg"
+        $bitmap = New-Object -TypeName System.Drawing.Bitmap -ArgumentList $Size, $Size
+        $bitmap.Save($file, [System.Drawing.Imaging.ImageFormat]::Jpeg)
+        $bitmap.Dispose()
+        InModuleScope tcs.intune.packaging -Parameters @{ Path = $file; Expected = $Expected } {
+            Test-IntuneLogoImage -Path $Path -ErrorAction SilentlyContinue | Should -Be $Expected
+        }
+    }
 }

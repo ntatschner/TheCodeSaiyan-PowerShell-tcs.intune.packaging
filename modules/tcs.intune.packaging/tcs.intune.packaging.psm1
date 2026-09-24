@@ -1,96 +1,37 @@
-#region Load Classes First (must be loaded before functions that use them)
-$Classes = @(
-    Get-ChildItem -Path $PSScriptRoot\Classes\*.ps1 -Recurse -ErrorAction SilentlyContinue
-)
-foreach ($Class in $Classes) {
+#region load private and public functions
+# Only the top level of Public/ and Private/ is loaded. Public/Templates holds installer scripts that
+# are copied into packages by New-APFDeployment and New-APFConfigDeployment; they must never be
+# dot-sourced into the module. Tests live in Public/Tests and Private/Tests.
+$Private = @(Get-ChildItem -Path (Join-Path -Path $PSScriptRoot -ChildPath 'Private') -Filter '*.ps1' -File -ErrorAction SilentlyContinue |
+        Where-Object { $_.Name -notlike '*.Tests.ps1' })
+$Public = @(Get-ChildItem -Path (Join-Path -Path $PSScriptRoot -ChildPath 'Public') -Filter '*.ps1' -File -ErrorAction SilentlyContinue |
+        Where-Object { $_.Name -notlike '*.Tests.ps1' })
+
+foreach ($File in @($Private + $Public)) {
     try {
-        . $Class.FullName
+        . $File.FullName
     }
     catch {
-        Write-Error -Message "Failed to import class at $($Class.FullName): $_"
+        Write-Error -Message "Failed to import '$($File.FullName)': $_"
     }
 }
 #endregion
 
-#region get public and private function definition files.
-$Public = @(
-    Get-ChildItem -Path $PSScriptRoot\Public\*.ps1 -Recurse -Exclude "*.Tests.ps1" -ErrorAction SilentlyContinue
-)
-$Private = @(
-    Get-ChildItem -Path $PSScriptRoot\Private\*.ps1 -Recurse -Exclude "*.Tests.ps1" -ErrorAction SilentlyContinue
-)
-#endregion
-
-#region source the files
-foreach ($Function in @($Public + $Private)) {
-    $FunctionPath = $Function.fullname
-    try {
-        . $FunctionPath # dot source function
-    }
-    catch {
-        Write-Error -Message "Failed to import function at $($FunctionPath): $_"
-    }
-}
-#endregion
-
-#region read in or create an initial config file and variable
-#. "$PSScriptRoot\Config.ps1" # uncomment to source config parsing logic
-#endregion
-
-#region set variables visible to the module and its functions only
-$Date = Get-Date -UFormat "%Y.%m.%d"
-$Time = Get-Date -UFormat "%H:%M:%S"
-. "$PSScriptRoot\Colors.ps1"
-#endregion
-
-#region export Public functions ($Public.BaseName) for WIP modules
-Export-ModuleMember -Function $Public.Basename
-#endregion
-
-#region export Classes
-# Export classes to make them available to module consumers
-$ClassNames = $Classes | ForEach-Object {
-    $content = Get-Content $_.FullName -Raw
-    if ($content -match 'Class\s+(\w+)') {
-        $matches[1]
-    }
-}
-if ($ClassNames) {
-    foreach ($ClassName in $ClassNames) {
-        Export-ModuleMember -Variable $ClassName -ErrorAction SilentlyContinue
-    }
-}
-#endregion
-
-# Module Config setup and import
+#region module config, load telemetry and update check (never blocks import)
 try {
     $CurrentConfig = Get-ModuleConfig -CommandPath $PSCommandPath -ErrorAction Stop
+    Invoke-TelemetryCollection -ModuleName $CurrentConfig.ModuleName -ModuleVersion $CurrentConfig.ModuleVersion -CommandName 'Import-Module' -ExecutionID ([guid]::NewGuid().ToString()) -Stage 'Module-Load'
+    if ($CurrentConfig.UpdateWarning -eq $true) {
+        $null = Get-ModuleStatus -ShowMessage -ModuleName $CurrentConfig.ModuleName -ModulePath $CurrentConfig.ModulePath -CacheHours $CurrentConfig.UpdateCheckIntervalHours
+    }
 }
 catch {
-    Write-Error "Module Import error: `n $($_.Exception.Message)"
+    Write-Warning "tcs.intune.packaging configuration could not be loaded; defaults will be used. $($_.Exception.Message)"
 }
+#endregion
 
-# Generate execution ID
-$ExecutionID = [System.Guid]::NewGuid().ToString()
+# The plural names are kept as aliases for callers of versions before 0.3.0
+Set-Alias -Name 'Get-MSIProperties' -Value 'Get-MSIProperty'
+Set-Alias -Name 'New-ApplicationDeploymentGroups' -Value 'New-ApplicationDeploymentGroup'
 
-$TelmetryArgs = @{
-    ModuleName    = $CurrentConfig.ModuleName
-    ModulePath    = $CurrentConfig.ModulePath
-    ModuleVersion = $MyInvocation.MyCommand.Module.Version
-    ExecutionID   = $ExecutionID
-    CommandName   = $MyInvocation.MyCommand.Name
-    URI           = 'https://NOTYETDEFINED.com'
-    ClearTimer    = $true
-    Stage         = 'Module-Load'
-}
-
-if ($CurrentConfig.BasicTelemetry -eq 'True') {
-    Invoke-TelemetryCollection -Minimal @TelmetryArgs
-}
-else {
-    Invoke-TelemetryCollection @TelmetryArgs
-}
-
-if ($CurrentConfig.UpdateWarning -eq 'True') {
-    Get-ModuleStatus -ShowMessage -ModuleName $CurrentConfig.ModuleName -ModulePath $CurrentConfig.ModulePath
-}
+Export-ModuleMember -Function $Public.BaseName -Alias 'Get-MSIProperties', 'New-ApplicationDeploymentGroups'

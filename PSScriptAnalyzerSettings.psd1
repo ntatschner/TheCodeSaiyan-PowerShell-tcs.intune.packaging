@@ -1,76 +1,61 @@
 @{
     IncludeRules = @(
+        'PSAvoidUsingWriteHost',
+        'PSUseDeclaredVarsMoreThanAssignments',
+        'PSAvoidUsingInvokeExpression',
+        'PSAvoidUsingPlainTextForPassword',
+        'PSAvoidUsingConvertToSecureStringWithPlainText',
+        'PSUseShouldProcessForStateChangingFunctions',
+        'PSAvoidGlobalVars',
+        'PSUseSingularNouns',
+        'PSUseApprovedVerbs',
         'PSAvoidUsingCmdletAliases',
         'PSAvoidUsingPositionalParameters',
-        'PSAvoidUsingWriteHost',
-        'PSMissingModuleManifestField',
         'PSProvideCommentHelp',
-        'PSReservedCmdletChar',
         'PSReservedParams',
-        'PSShouldProcess',
-        'PSUseApprovedVerbs',
-        'PSUseBOMForUnicodeEncodedFile',
-        'PSUseCmdletCorrectly',
-        'PSUseCompatibleCmdlets',
-        'PSUseCompatibleSyntax',
-        'PSUseCompatibleTypes',
-        'PSUseDeclaredVarsMoreThanAssignments',
-        'PSUseOutputTypeCorrectly',
-        'PSUseShouldProcessForStateChangingFunctions',
-        'PSUseSingularNouns',
-        'PSUseToExportFieldsInManifest',
-        'PSUseUTF8EncodingForHelpFile',
-        'PSPlaceOpenBrace',
-        'PSPlaceCloseBrace',
+        'PSReservedCmdletChar',
+        'PSAvoidDefaultValueSwitchParameter',
+        'PSMisleadingBacktick',
+        'PSMissingModuleManifestField',
+        'PSPossibleIncorrectComparisonWithNull',
+        'PSAvoidUsingDeprecatedManifestFields',
+        'PSAvoidUsingEmptyCatchBlock',
+        'PSUseLiteralInitializerForHashtable',
         'PSUseConsistentIndentation',
         'PSUseConsistentWhitespace',
-        'PSAlignAssignmentStatement'
+        'PSAlignAssignmentStatement',
+        'PSUseCorrectCasing'
     )
     Rules = @{
-        PSUseConsistentIndentation  = @{
-            Enable              = $true
-            IndentationSize     = 4
+        PSUseConsistentIndentation = @{
+            Enable          = $true
+            IndentationSize = 4
             PipelineIndentation = 'IncreaseIndentationForFirstPipeline'
-            Kind                = 'space'
+            Kind            = 'space'
         }
-        PSUseConsistentWhitespace   = @{
-            Enable                                  = $true
-            CheckInnerBrace                         = $true
-            CheckOpenBrace                          = $true
-            CheckOpenParen                          = $true
-            CheckOperator                           = $true
-            CheckPipe                               = $true
-            CheckPipeForRedundantWhitespace         = $true
-            CheckSeparator                          = $true
-            CheckParameter                          = $false
+        PSUseConsistentWhitespace = @{
+            Enable                          = $true
+            CheckInnerBrace                 = $true
+            CheckOpenBrace                  = $true
+            CheckOpenParen                  = $true
+            CheckOperator                   = $true
+            CheckPipe                       = $true
+            CheckPipeForRedundantWhitespace = $true
+            CheckSeparator                  = $true
+            CheckParameter                  = $false
+            # Allow aligned '=' in hashtables (PSAlignAssignmentStatement enforces alignment)
             IgnoreAssignmentOperatorInsideHashTable = $true
         }
-        PSPlaceOpenBrace            = @{
-            Enable             = $true
-            OnSameLine         = $true
-            NewLineAfter       = $true
-            IgnoreOneLineBlock = $true
-        }
-        PSPlaceCloseBrace           = @{
-            Enable             = $true
-            NewLineAfter       = $false
-            IgnoreOneLineBlock = $true
-            NoEmptyLineBefore  = $false
-        }
-        PSAlignAssignmentStatement  = @{
+        PSAlignAssignmentStatement = @{
             Enable         = $true
             CheckHashtable = $true
         }
-        PSProvideCommentHelp        = @{
+        PSProvideCommentHelp = @{
             Enable                  = $true
             ExportedOnly            = $true
             BlockComment            = $true
             VSCodeSnippetCorrection = $false
             Placement               = 'begin'
-        }
-        PSUseCompatibleSyntax       = @{
-            Enable         = $true
-            TargetVersions = @('5.1', '7.0', '7.2')
         }
     }
 }

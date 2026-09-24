@@ -1,15 +1,19 @@
-#Requires -PSEdition Core
-#Requires -Modules Microsoft.Graph.Authentication, Microsoft.Graph.Devices.CorporateManagement
-
 function New-IntuneWin32Application {
     <#
     .SYNOPSIS
-        Creates or clones a Win32 application in Microsoft Intune.
+        Prepares the properties of a new or cloned Win32 application in Microsoft Intune.
 
     .DESCRIPTION
-        The New-IntuneWin32Application function creates a new Win32 application in Microsoft Intune or clones
-        an existing application. It supports creating applications from scratch or duplicating existing ones
-        with modified properties using Microsoft Graph API.
+        The New-IntuneWin32Application function builds the properties for a Win32 application in
+        Microsoft Intune from its parameters or, with ExistingPackage, from an existing application that
+        is cloned (parameters you specify win over the cloned values).
+
+        Creating the application and uploading the .intunewin content through Microsoft Graph is not
+        implemented yet: after building the properties the function returns an error that says so.
+
+        Requires the Microsoft.Graph.Authentication and Microsoft.Graph.Devices.CorporateManagement
+        modules and a connection made with Connect-MgGraph. ExistingPackage offers tab completion of
+        the applications in the connected tenant.
 
     .PARAMETER Name
         The display name of the application.
@@ -39,130 +43,158 @@ function New-IntuneWin32Application {
         URL to additional information about the application.
 
     .PARAMETER IsFeatured
-        Boolean indicating whether the application should be featured in the Company Portal.
+        Whether the application is featured in the Company Portal.
+
+    .PARAMETER ApplicableArchitectures
+        The architecture the application applies to: x86, x64, arm or neutral. Default is x64.
+
+    .PARAMETER MinimumFreeDiskSpaceInMB
+        The minimum free disk space, in MB, required on the device.
+
+    .PARAMETER MinimumMemoryInMB
+        The minimum memory, in MB, required on the device.
+
+    .PARAMETER MinimumNumberOfProcessors
+        The minimum number of processors required on the device.
+
+    .PARAMETER MinimumCpuSpeedInMHz
+        The minimum CPU speed, in MHz, required on the device.
+
+    .PARAMETER InstallExperienceRunAsAccount
+        The account the installation runs as: system or user. Default is system.
+
+    .PARAMETER InstallExperienceDeviceRestartBehavior
+        The restart behaviour after installation: allow, basedOnReturnCode, suppress or force. Default is suppress.
+
+    .PARAMETER MinimumSupportedWindowsRelease
+        The minimum supported Windows release. Default is 22h2.
+
+    .PARAMETER Rules
+        Detection and requirement rules, for example created with New-IntuneWin32Rule.
+
+    .PARAMETER IconFilePath
+        The path to the application icon (PNG or JPG).
+
+    .PARAMETER IntuneWinFilePath
+        The path to the .intunewin package file.
+
+    .PARAMETER ExistingPackage
+        The existing application to clone, as "<DisplayName> | <Id>". Tab completion lists the
+        applications in the connected tenant.
+
+    .OUTPUTS
+        None
 
     .EXAMPLE
-        New-IntuneWin32Application -Name "MyApp" -Description "My Application" -Version "1.0.0" -Publisher "Contoso" -Owner "IT Admin" -Developer "Dev Team"
-        
-        Creates a new Win32 application in Intune.
+        New-IntuneWin32Application -Name "MyApp" -Description "My Application" -Version "1.0.0" -Publisher "Contoso" -Owner "IT Admin" -Developer "Dev Team" -IntuneWinFilePath .\MyApp.intunewin
+
+        Builds the properties for a new Win32 application.
 
     .EXAMPLE
-        New-IntuneWin32Application -Name "MyApp v2" -Version "2.0.0" -CloneExistingPackage
-        
-        Clones an existing application with a new version.
+        New-IntuneWin32Application -Version "2.0.0" -ExistingPackage "MyApp | 00000000-0000-0000-0000-000000000000" -IntuneWinFilePath .\MyApp.intunewin
+
+        Builds the properties for a new version of an existing application.
 
     .NOTES
-        Requires PowerShell Core and the Microsoft.Graph.Authentication and Microsoft.Graph.Devices.CorporateManagement modules.
         Must be connected to Microsoft Graph with appropriate permissions before running this function.
     #>
-    [CmdletBinding()]
-    [CmdletBinding(DefaultParameterSetName = 'NewPackage')]
+    [CmdletBinding(DefaultParameterSetName = 'NewPackage', SupportsShouldProcess)]
+    [OutputType([void])]
     param (
         [Parameter(Mandatory, ParameterSetName = 'NewPackage')]
         [Parameter(ParameterSetName = 'CloneExistingPackage')]
         [string]$Name,
-    
+
         [Parameter(Mandatory, ParameterSetName = 'NewPackage')]
         [Parameter(ParameterSetName = 'CloneExistingPackage')]
         [string]$Description,
-        
-        [Parameter(Mandatory, ParameterSetName = 'NewPackage')]
-        [Parameter(Mandatory, ParameterSetName = 'CloneExistingPackage')]
+
+        [Parameter(Mandatory)]
         [version]$Version,
-    
+
         [Parameter(Mandatory, ParameterSetName = 'NewPackage')]
         [Parameter(ParameterSetName = 'CloneExistingPackage')]
         [string]$Publisher,
-    
+
         [Parameter(Mandatory, ParameterSetName = 'NewPackage')]
         [Parameter(ParameterSetName = 'CloneExistingPackage')]
         [string]$Owner,
-    
+
         [Parameter(Mandatory, ParameterSetName = 'NewPackage')]
         [Parameter(ParameterSetName = 'CloneExistingPackage')]
         [string]$Developer,
-    
-        [Parameter(ParameterSetName = 'NewPackage')]
-        [Parameter(ParameterSetName = 'CloneExistingPackage')]
+
         [string]$Notes,
-    
-        [Parameter(ParameterSetName = 'NewPackage')]
-        [Parameter(ParameterSetName = 'CloneExistingPackage')]
+
         [string]$PrivacyInformationUrl,
-    
-        [Parameter(ParameterSetName = 'NewPackage')]
-        [Parameter(ParameterSetName = 'CloneExistingPackage')] 
+
         [string]$InformationUrl,
-    
-        [Parameter(ParameterSetName = 'NewPackage')]
-        [Parameter(ParameterSetName = 'CloneExistingPackage')]
+
         [bool]$IsFeatured,
-    
-        [Parameter(ParameterSetName = 'NewPackage')]
-        [Parameter(ParameterSetName = 'CloneExistingPackage')]
+
         [ValidateSet("x86", "x64", "arm", "neutral")]
         [string]$ApplicableArchitectures = "x64",
-    
-        [Parameter(ParameterSetName = 'NewPackage')]
-        [Parameter(ParameterSetName = 'CloneExistingPackage')]
+
         [int]$MinimumFreeDiskSpaceInMB,
-    
-        [Parameter(ParameterSetName = 'NewPackage')]
-        [Parameter(ParameterSetName = 'CloneExistingPackage')]
+
         [int]$MinimumMemoryInMB,
-    
-        [Parameter(ParameterSetName = 'NewPackage')]
-        [Parameter(ParameterSetName = 'CloneExistingPackage')]
+
         [int]$MinimumNumberOfProcessors,
-    
-        [Parameter(ParameterSetName = 'NewPackage')]
-        [Parameter(ParameterSetName = 'CloneExistingPackage')]
+
         [int]$MinimumCpuSpeedInMHz,
-    
-        [Parameter(ParameterSetName = 'NewPackage')]
-        [Parameter(ParameterSetName = 'CloneExistingPackage')]
+
         [ValidateSet("system", "user")]
         [string]$InstallExperienceRunAsAccount = "system",
-    
-        [Parameter(ParameterSetName = 'NewPackage')]
-        [Parameter(ParameterSetName = 'CloneExistingPackage')]
+
         [ValidateSet("allow", "basedOnReturnCode", "suppress", "force")]
         [string]$InstallExperienceDeviceRestartBehavior = "suppress",
-    
-        [Parameter(ParameterSetName = 'NewPackage')]
-        [Parameter(ParameterSetName = 'CloneExistingPackage')]
+
         [string]$MinimumSupportedWindowsRelease = "22h2",
-    
+
         [hashtable[]]$Rules,
-    
+
         [string]$IconFilePath,
-    
-        [Parameter(Mandatory, ParameterSetName = 'NewPackage')]
-        [Parameter(Mandatory, ParameterSetName = 'CloneExistingPackage')]
-        [ValidateScript({ Test-Path $_ })]
+
+        [Parameter(Mandatory)]
+        [ValidateScript({ Test-Path -Path $_ -PathType Leaf })]
         [string]$IntuneWinFilePath,
-    
-        [Parameter(ParameterSetName = 'CloneExistingPackage')]
-        [ValidateSet([IntunePackages])]
+
+        [Parameter(Mandatory, ParameterSetName = 'CloneExistingPackage')]
+        [ArgumentCompleter({
+                param($CommandName, $ParameterName, $WordToComplete)
+                $null = $CommandName, $ParameterName
+                if (-not (Get-Command -Name 'Get-MgDeviceAppManagementMobileApp' -ErrorAction SilentlyContinue)) {
+                    return
+                }
+                try {
+                    Get-MgDeviceAppManagementMobileApp -All -Filter "NOT(startswith(Notes, 'PmpAppId:') or startswith(Notes, 'PmpUpdateId:'))" -Property DisplayName, CreatedDateTime, Id -ErrorAction Stop |
+                        Group-Object -Property DisplayName |
+                        ForEach-Object { $_.Group | Sort-Object -Property CreatedDateTime -Descending | Select-Object -First 1 } |
+                        Where-Object { $_.DisplayName -like "$($WordToComplete.Trim("'"))*" } |
+                        ForEach-Object { "'$($_.DisplayName) | $($_.Id)'" }
+                }
+                catch {
+                    return
+                }
+            })]
+        [ValidatePattern('\|')]
         [string]$ExistingPackage
     )
 
     begin {
+        if (-not (Get-Command -Name 'Get-MgDeviceAppManagementMobileApp' -ErrorAction SilentlyContinue)) {
+            throw 'Get-MgDeviceAppManagementMobileApp is not available. Install the Microsoft.Graph.Devices.CorporateManagement module and connect with Connect-MgGraph.'
+        }
         if ($PSCmdlet.ParameterSetName -eq 'CloneExistingPackage') {
-            Write-Verbose "Retrieving existing package information for $ExistingPackage"
-            Write-Verbose "New Package will set selected package as its superseded source."
-            Write-Verbose "Existing package will have its assignments copied and removed."
-            $ExistingPackageSplit = $($ExistingPackage.Split('|'))
+            $ExistingPackageSplit = $ExistingPackage.Split('|')
             $ExistingPackageID = $ExistingPackageSplit[-1].Trim()
             $ExistingPackageName = $ExistingPackageSplit[0].Trim()
-            Write-Verbose "Existing package ID: $($ExistingPackageID)"
+            Write-Verbose "Retrieving existing package information for $ExistingPackageName ($ExistingPackageID)"
             try {
-                $ClonePackage = Get-MGDeviceAppManagementMobileApp -ExpandProperty Assignments -MobileAppId $ExistingPackageID
-                Write-Verbose "Successfully retrieved existing package information for $ExistingPackageName"
+                $ClonePackage = Get-MgDeviceAppManagementMobileApp -MobileAppId $ExistingPackageID -ExpandProperty Assignments -ErrorAction Stop
             }
             catch {
-                Write-Error "Failed to retrieve existing package information for $ExistingPackageName"
-                return
+                throw "Failed to retrieve existing package information for $($ExistingPackageName): $($_.Exception.Message)"
             }
         }
     }
@@ -176,33 +208,22 @@ function New-IntuneWin32Application {
             Developer   = $Developer
             Notes       = $Notes
             Version     = $Version
-            $Rules      = $Rules
+            Rules       = $Rules
             FilePath    = $IntuneWinFilePath
         }
         if ($PSCmdlet.ParameterSetName -eq 'CloneExistingPackage') {
             Write-Verbose "Cloning existing package information for $ExistingPackageName where parameters are not specified."
-            foreach ($parameter in $($ClonePackage | Get-Member -MemberType Properties).Name) {
-                if (($parameter -in $PackageParams.Keys) -and ($parameter -notin $PSBoundParameters.Keys)) {
-                    if ([string]::IsNullOrEmpty($($ClonePackage.$parameter)) -eq $false) {
-                        Write-Verbose "Setting $parameter to $($ClonePackage.$parameter)"
-                        $PackageParams[$parameter] = $ClonePackage.$parameter
-                    }
+            $BoundNames = @($PSBoundParameters.Keys) + @(if ($PSBoundParameters.ContainsKey('Name')) { 'DisplayName' })
+            foreach ($parameter in @($ClonePackage | Get-Member -MemberType Properties).Name) {
+                if (($parameter -in @($PackageParams.Keys)) -and ($parameter -notin $BoundNames) -and -not [string]::IsNullOrEmpty($ClonePackage.$parameter)) {
+                    Write-Verbose "Setting $parameter to $($ClonePackage.$parameter)"
+                    $PackageParams[$parameter] = $ClonePackage.$parameter
                 }
             }
         }
-        
-        Write-Verbose "Creating new package.."
-        try {
-            $NewPackage = New-MGBetaDeviceAppManagementMobileApp -
-            Write-Verbose "Successfully created new package: $($NewPackage.DisplayName)"
-        }
-        catch {
-            Write-Error "Failed to create new package: $Name"
-            return
-        }
 
-    }
-    end {
-
+        if ($PSCmdlet.ShouldProcess([string]$PackageParams.DisplayName, 'Create Intune Win32 application')) {
+            Write-Error -Exception ([System.NotImplementedException]::new('Creating the Win32 application in Intune is not implemented yet.')) -Category NotImplemented
+        }
     }
 }

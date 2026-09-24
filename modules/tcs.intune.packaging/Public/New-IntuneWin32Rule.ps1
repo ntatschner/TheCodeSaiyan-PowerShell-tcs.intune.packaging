@@ -1,10 +1,10 @@
-function New-Win32Rule {
+function New-IntuneWin32Rule {
     <#
     .SYNOPSIS
         Creates detection or requirement rules for Intune Win32 applications.
 
     .DESCRIPTION
-        The New-Win32Rule function generates rule objects that define detection logic or system requirements
+        The New-IntuneWin32Rule function generates rule objects that define detection logic or system requirements
         for Win32 applications in Microsoft Intune. It supports file/folder checks, registry checks,
         script-based detection, and MSI product code detection.
 
@@ -13,29 +13,39 @@ function New-Win32Rule {
 
     .PARAMETER RuleType
         The type of rule to create: 'FileOrFolder', 'Registry', 'Script', or 'MSI'.
+        The other parameters are dynamic and depend on RuleType:
+          FileOrFolder  Path, FileOrFolderName, OperationType, Check32BitOn64BitSystem
+          Registry      Path, KeyName, ValueName, Operator, DataType, Value
+          Script        ScriptPath, RunAs32Bit, EnforceSignatureCheck; for requirement rules also
+                        RunAsAccount, DisplayName, Operator, ComparisonValue, OperationType
+          MSI           MSIPath, ProductCode, ProductVersionOperator, ProductVersion, AutoDetect
+                        (AutoDetect reads the product code and version from the MSI; Windows only)
 
     .EXAMPLE
-        New-Win32Rule -RuleParentType 'detection' -RuleType 'FileOrFolder' -Path "C:\Program Files\MyApp" -FileOrFolderName "MyApp.exe" -OperationType "exists"
-        
+        New-IntuneWin32Rule -RuleParentType 'detection' -RuleType 'FileOrFolder' -Path "C:\Program Files\MyApp" -FileOrFolderName "MyApp.exe" -OperationType "exists"
+
         Creates a file existence detection rule.
 
     .EXAMPLE
-        New-Win32Rule -RuleParentType 'detection' -RuleType 'Registry' -Path "HKLM:\Software\MyApp" -ValueName "Version" -OperationType "string" -Operator "equal" -ComparisonValue "1.0"
-        
+        New-IntuneWin32Rule -RuleParentType 'detection' -RuleType 'Registry' -Path "HKLM:\Software" -KeyName "MyApp" -ValueName "Version" -Operator "equal" -DataType "version" -Value "1.0"
+
         Creates a registry value detection rule.
 
     .EXAMPLE
-        New-Win32Rule -RuleParentType 'requirement' -RuleType 'Script' -ScriptFile "C:\Scripts\check.ps1"
-        
+        New-IntuneWin32Rule -RuleParentType 'requirement' -RuleType 'Script' -ScriptPath "C:\Scripts\check.ps1" -RunAsAccount system
+
         Creates a script-based requirement rule.
 
     .OUTPUTS
-        Hashtable containing the rule configuration.
+        System.Collections.Hashtable
+        The rule, with property names as used by the Microsoft Graph win32LobApp rule types.
 
     .NOTES
         This function uses dynamic parameters based on the RuleType selected.
         Different rule types require different parameters to be specified.
     #>
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSUseShouldProcessForStateChangingFunctions', '',
+        Justification = 'Only builds an in-memory hashtable; no system state is changed.')]
     [CmdletBinding()]
     [OutputType([Hashtable])]
     param (
@@ -56,7 +66,7 @@ function New-Win32Rule {
                 ValidateSet = @('equal', 'notEqual', 'greaterThan', 'greaterThanOrEqual', 'lessThan', 'lessThanOrEqual')
             },
             @{Name = "ComparisonValue"; ParameterType = [string]; HelpMessage = "The value to compare against." },
-            @{Name = "Path"; ParameterType = [string]; Mandatory = $true; HelpMessage = "The path to the file or folder."; 
+            @{Name = "Path"; ParameterType = [string]; Mandatory = $true; HelpMessage = "The path to the file or folder.";
                 ValidateScript = { if (Test-Path -Path $_ -IsValid) { $true } else { throw "Path doesn't seem to be valid." } }
             },
             @{Name = "OperationType"; ParameterType = [string]; ValidateSet = @("notConfigured", "string", "dateTime", "integer", "float", "version", "boolean");
@@ -105,7 +115,7 @@ function New-Win32Rule {
             'Script' {
                 $scriptParams = @(
                     @{Name = "ScriptPath"; ParameterType = [string]; Mandatory = $true; HelpMessage = "The script path.";
-                        ValidateScript = { if (Test-Path -Path $_ ) { $true } else { throw "Script path doesn't seem to be valid." } } 
+                        ValidateScript = { if (Test-Path -Path $_ ) { $true } else { throw "Script path doesn't seem to be valid." } }
                     }
                     @{Name = "RunAs32Bit"; ParameterType = [switch]; HelpMessage = "Run script as 32-bit on 64-bit clients" }
                     @{Name = "EnforceSignatureCheck"; ParameterType = [switch]; HelpMessage = "Enforce script signature check" }
@@ -113,7 +123,7 @@ function New-Win32Rule {
                 )
                 if ($RuleParentType -ne 'detection') {
                     $scriptParams += @{Name = "RunAsAccount"; ParameterType = [string]; Mandatory = $true; ValidateSet = @("system", "user");
-                        HelpMessage = "The account to run the script as." 
+                        HelpMessage = "The account to run the script as."
                     }
                     $scriptParams += @{Name = "DisplayName"; ParameterType = [string]; HelpMessage = "The display name of the script." }
                     $scriptParams += $MultiSetParameters[0, 1, 3]
@@ -150,68 +160,69 @@ function New-Win32Rule {
             "script"       = "#microsoft.graph.win32LobAppPowerShellScriptRule"
             "msi"          = "#microsoft.graph.win32LobAppProductCodeRule"
         }
+        # Dynamic parameters are not created as variables, so read everything from PSBoundParameters
+        $CommonParameters = [System.Management.Automation.PSCmdlet]::CommonParameters + [System.Management.Automation.PSCmdlet]::OptionalCommonParameters
         $RuleHashtable = @{}
         $RuleHashtable.Add("@odata.type", $RuleODataTypeHashtable[$RuleType])
         foreach ($P in $PSBoundParameters.Keys) {
-            $RuleHashtable.Add($(ConvertTo-CamelCase -value $P), $PSBoundParameters[$P])
+            if ($P -in $CommonParameters -or $P -in 'RuleParentType', 'RuleType') {
+                continue
+            }
+            $RuleHashtable[$(ConvertTo-CamelCase -Value $P)] = $PSBoundParameters[$P]
         }
-        # Add parameters that have have default assigned and have not been overridden for each RuleType
+        # Add parameters that have defaults and have not been overridden for each RuleType
         switch ($RuleType) {
-            'file' {
-                if (-not $RuleHashtable.ContainsKey('check32BitOn64System')) { $RuleHashtable.Add('check32BitOn64System', $false) }
-                if ($RuleHashtable.operationType -eq 'exists' -and -Not $PSBoundParameters['ComparisonValue']) {
-                    $RuleHashtable.Add('operator', 'equal')
-                    $RuleHashtable.Add('ComparisonValue', $true)
-                
+            'FileOrFolder' {
+                # Graph names the property check32BitOn64System
+                $RuleHashtable['check32BitOn64System'] = [bool]$PSBoundParameters['Check32BitOn64BitSystem']
+                $RuleHashtable.Remove('check32BitOn64BitSystem')
+                if ($RuleHashtable['operationType'] -eq 'exists' -and -not $PSBoundParameters.ContainsKey('ComparisonValue')) {
+                    $RuleHashtable['operator'] = 'notConfigured'
                 }
             }
-            'registry' {
-                if (-not $RuleHashtable.ContainsKey('path')) { $RuleHashtable.Add('path', $Path) }
-                if (-not $RuleHashtable.ContainsKey('valueName')) { $RuleHashtable.Add('valueName', $ValueName) }
-                if (-not $RuleHashtable.ContainsKey('registryOperationType')) { $RuleHashtable.Add('registryOperationType', $RegistryOperationType) }
-            }
-            'script' {
+            'Script' {
                 $ScriptPath = $PSBoundParameters['ScriptPath']
-                if ($RuleHashtable.ContainsKey('displayName') -and [string]::IsNullOrEmpty($RuleHashtable.displayName)) { $RuleHashtable.displayName = $(Split-Path -Path $ScriptPath -Leaf) }
-                if (-not $RuleHashtable.ContainsKey('enforceSignatureCheck')) { $RuleHashtable.Add('enforceSignatureCheck', $false) }
-                if (-not $RuleHashtable.ContainsKey('runAs32Bit')) { $RuleHashtable.Add('runAs32Bit', $false) }
-                if (-not $RuleHashtable.ContainsKey('runAsAccount')) { $RuleHashtable.Add('runAsAccount', "system") }
-                if ($RuleParentType -eq 'detection') {
-                    $RuleHashtable.Add('operationType', 'notConfigured')
-                    $RuleHashtable.Add('operator', 'notConfigured')
+                if ($RuleParentType -ne 'detection' -and [string]::IsNullOrEmpty($RuleHashtable['displayName'])) {
+                    $RuleHashtable['displayName'] = Split-Path -Path $ScriptPath -Leaf
                 }
-                $RuleHashtable.scriptContent = [System.Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes($(
-                            try {
-                                Get-Content -Path $ScriptPath -ErrorAction Stop
-                            }
-                            catch {
-                                Write-Error -Category ReadError -RecommendedAction "Verify path, and try again." -Message "Failed to read script content from $ScriptPath"
-                                break
-                            }
-                        )))
-                $RuleHashtable.Remove('ScriptPath')
+                $RuleHashtable['enforceSignatureCheck'] = [bool]$PSBoundParameters['EnforceSignatureCheck']
+                $RuleHashtable['runAs32Bit'] = [bool]$PSBoundParameters['RunAs32Bit']
+                if (-not $RuleHashtable.ContainsKey('runAsAccount')) {
+                    $RuleHashtable['runAsAccount'] = 'system'
+                }
+                if ($RuleParentType -eq 'detection') {
+                    $RuleHashtable['operationType'] = 'notConfigured'
+                    $RuleHashtable['operator'] = 'notConfigured'
+                }
+                try {
+                    $ScriptContent = Get-Content -Path $ScriptPath -Raw -ErrorAction Stop
+                }
+                catch {
+                    throw "Failed to read script content from $($ScriptPath): $($_.Exception.Message)"
+                }
+                $RuleHashtable['scriptContent'] = [System.Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes($ScriptContent))
+                $RuleHashtable.Remove('scriptPath')
             }
-            'msi' {
-                if (-not $RuleHashtable.ContainsKey('msiPath')) { $RuleHashtable.Add('msiPath', $MSIPath) }
-                if (-not $RuleHashtable.ContainsKey('productCode')) { $RuleHashtable.Add('productCode', $ProductCode) }
-                if (-not $RuleHashtable.ContainsKey('productVersionOperator')) { $RuleHashtable.Add('productVersionOperator', $ProductVersionOperator) }
-                if (-not $RuleHashtable.ContainsKey('productVersion')) { $RuleHashtable.Add('productVersion', $ProductVersion) }
+            'MSI' {
+                if ($PSBoundParameters['AutoDetect'] -eq $true) {
+                    $MSIInfo = Get-MSIProperty -Path $PSBoundParameters['MSIPath'] -ErrorAction Stop
+                    $RuleHashtable['productCode'] = $MSIInfo.ProductCode
+                    $RuleHashtable['productVersion'] = $MSIInfo.ProductVersion
+                    $RuleHashtable['productVersionOperator'] = 'equal'
+                }
+                foreach ($Key in 'productCode', 'productVersionOperator', 'productVersion') {
+                    if (-not $RuleHashtable.ContainsKey($Key)) {
+                        $RuleHashtable[$Key] = $null
+                    }
+                }
+                $RuleHashtable.Remove('msiPath')
+                $RuleHashtable.Remove('autoDetect')
             }
         }
-        # Remove Fields not needed for output
-        $RuleHashtable.ruleType = $(ConvertTo-CamelCase -value $RuleParentType)
-        $RuleHashtable.Remove('RuleParentType')
-        $RuleHashtable.Remove('MSIPath')
-        if (($RuleType -eq 'file' -or $RuleType -eq 'registry') -and ($FileOperationType -eq 'exists' -or $RegistryOperationType -eq 'exists')) {
-            $RuleHashtable.Remove('Operator')
-            $RuleHashtable.Remove('ComparisonValue')
+        $RuleHashtable['ruleType'] = ConvertTo-CamelCase -Value $RuleParentType
+        if ($RuleType -in 'FileOrFolder', 'Registry' -and $RuleHashtable['operationType'] -in 'exists', 'notExists') {
+            $RuleHashtable.Remove('comparisonValue')
         }
-        if (($RuleType -eq 'msi' -and $AutoDetect -eq $true)) {
-            $MSIInfo = Get-MSIProperties -Path $MSIPath
-            $RuleHashtable.ProductCode = $MSIInfo.ProductCode
-            $RuleHashtable.ProductVersion = $MSIInfo.ProductVersion
-            $RuleHashtable.ProductVersionOperator = 'equal'
-        }
-        return $RuleHashtable 
+        return $RuleHashtable
     }
 }

@@ -1,4 +1,6 @@
 function New-Win32Requirement {
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSUseShouldProcessForStateChangingFunctions', '',
+        Justification = 'Only builds an in-memory hashtable; no system state is changed.')]
     [CmdletBinding()]
     [OutputType([Hashtable])]
     param (
@@ -18,9 +20,10 @@ function New-Win32Requirement {
         $minimumSupportedWindowsRelease
     )
 
+    $CommonParameters = [System.Management.Automation.PSCmdlet]::CommonParameters + [System.Management.Automation.PSCmdlet]::OptionalCommonParameters
     $RequirementHashTable = @{}
     foreach ($param in $PSBoundParameters.Keys) {
-        if ($PSBoundParameters[$param]) {
+        if ($param -notin $CommonParameters -and $PSBoundParameters[$param]) {
             $RequirementHashTable.Add($param, $PSBoundParameters[$param])
         }
     }
