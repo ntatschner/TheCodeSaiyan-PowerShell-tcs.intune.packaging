@@ -16,11 +16,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The function in `New-IntuneWin32Rule.ps1` was named `New-Win32Rule` and was never exported; it is
   now `New-IntuneWin32Rule` as listed in the manifest.
 - `Convert-ModuleNameAndReferences` was listed in the manifest but never existed; removed.
-- `New-APFConfigDeployment -ConfigurationType` is mandatory; `Script-App`, `Script-User` and `Custom`
-  return a "not implemented" error instead of writing an incomplete package.
-- `Publish-IntuneAppPackage` and `New-IntuneWin32Application` now say that uploading/creating is not
-  implemented yet (they silently did nothing or failed before). `New-IntuneApplication -Publish`
-  warns instead of deleting the files it had just created.
+- `New-APFConfigDeployment -ConfigurationType` is mandatory.
+- `New-IntuneWin32Application` now creates the app and uploads its content. `InstallCommandLine`,
+  `UninstallCommandLine` and `Rules` (with a detection rule) are mandatory for a new app; `Owner`,
+  `Developer` and `Version` are optional (the version is added to the notes, because Graph v1.0 has no
+  version property for Win32 apps); `MinimumSupportedWindowsRelease` is no longer sent unless given;
+  the default restart behaviour is `basedOnReturnCode`. Only `Microsoft.Graph.Authentication` is needed.
+- `New-IntuneWin32Rule` returns rules with the Microsoft Graph property names (registry rules use
+  `keyPath`, `operationType` exists/doesNotExist/string/integer/version, and so on); MSI rules are
+  detection-only.
+- `New-IntuneApplication -Publish` publishes the package and then removes the JSON and .intunewin
+  files unless `-NoCleanUp` is used.
 - `IntuneWinAppUtil.exe` is downloaded to `%LOCALAPPDATA%\tcs.intune.packaging` instead of the module
   folder or the current directory.
 - `Get-IntunePackagingTool`, `New-PackageJSON` and `New-IntuneApplication` now return the files they
@@ -29,6 +35,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The stale `en-US/tcs.intune.packaging-help.xml` is removed; help comes from comment-based help.
 
 ### Added
+- Publishing to Intune with Microsoft Graph v1.0: `New-IntuneWin32Application` and
+  `Publish-IntuneAppPackage` create the Win32 app, create a content version and file, upload the
+  encrypted `.intunewin` content to Azure Storage in blocks (renewing the SAS URI for long uploads),
+  commit it with the encryption information from `Detection.xml` and set `committedContentVersion`.
+  `Publish-IntuneAppPackage -Force` uploads a new content version to an existing app.
+- `New-APFConfigDeployment` types `Script-App` (your script, system context), `Script-User` (your
+  script, user context) and `Custom` (placeholder script) with a new `script` installer template.
+- GPL-3.0 `LICENSE` and `LicenseUri` in the manifest.
 - Pester tests for every exported function (cross-platform where possible, Windows-only parts skipped
   elsewhere), `tests/Module.Tests.ps1` (manifest, exports, help, PSScriptAnalyzer, no pipeline output
   on import) and `tests/Templates.Tests.ps1`.

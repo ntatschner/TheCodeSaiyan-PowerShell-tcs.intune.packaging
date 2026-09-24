@@ -14,8 +14,9 @@ Part of the tcs module suite; built on [tcs.core](https://github.com/ntatschner/
 - Optional, only for the commands that talk to Microsoft Entra ID / Intune:
   - `Microsoft.Entra` (`New-ApplicationDeploymentGroup -CreateGroups`)
   - `Microsoft.Graph.Identity.DirectoryManagement` (`-AdminUnitId`)
-  - `Microsoft.Graph.Authentication` and `Microsoft.Graph.Devices.CorporateManagement`
-    (`Publish-IntuneAppPackage`, `New-IntuneWin32Application`)
+  - `Microsoft.Graph.Authentication` (`Publish-IntuneAppPackage`, `New-IntuneWin32Application`,
+    `New-IntuneApplication -Publish`), connected with
+    `Connect-MgGraph -Scopes DeviceManagementApps.ReadWrite.All`
 
 ## Installation
 
@@ -35,9 +36,9 @@ Import-Module ./TheCodeSaiyan-PowerShell-tcs.intune.packaging/modules/tcs.intune
 | Function | Purpose |
 | --- | --- |
 | `New-APFDeployment` | Creates an APF package folder for an MSI/EXE installer (installer scripts, config, detection script) and optionally a `.intunewin` |
-| `New-APFConfigDeployment` | Creates APF configuration packages: Registry, Files, PowerShellProfiles, Script-OS, WindowsFeature, StandAlone-Exe, Standalone-Application |
+| `New-APFConfigDeployment` | Creates APF configuration packages: Registry, Files, PowerShellProfiles, Script-OS, Script-App, Script-User, Custom, WindowsFeature, StandAlone-Exe, Standalone-Application |
 | `New-IntuneWin32AppPackage` | Wraps a source folder into a `.intunewin` package with `IntuneWinAppUtil.exe` |
-| `New-IntuneApplication` | Writes the application JSON configuration and the `.intunewin` package |
+| `New-IntuneApplication` | Writes the application JSON configuration and the `.intunewin` package, and optionally publishes them |
 | `New-IntuneWin32Rule` | Builds a Win32 app detection or requirement rule (file, registry, script, MSI) |
 | `New-ApplicationDeploymentGroup` | Generates (and optionally creates in Entra ID) the Available/Required/Test/Phase1 groups |
 | `Get-IntunePackagingTool` | Downloads `IntuneWinAppUtil.exe` from Microsoft's GitHub releases |
@@ -46,8 +47,8 @@ Import-Module ./TheCodeSaiyan-PowerShell-tcs.intune.packaging/modules/tcs.intune
 | `Invoke-Executable` | Runs an executable and returns its exit code and output |
 | `Start-DownloadFile` | Downloads a file to a folder |
 | `New-PackageJSON` | Writes package metadata JSON for a source folder |
-| `Publish-IntuneAppPackage` | Checks a package against the connected tenant. **Uploading is not implemented yet.** |
-| `New-IntuneWin32Application` | Builds the properties of a new or cloned Win32 app. **Creating the app is not implemented yet.** |
+| `Publish-IntuneAppPackage` | Publishes a package created by `New-IntuneApplication`: creates the Win32 app, or uploads a new content version with `-Force` |
+| `New-IntuneWin32Application` | Creates (or clones) a Win32 app in Intune and uploads its `.intunewin` content through Microsoft Graph |
 
 Aliases kept for earlier versions: `Get-MSIProperties`, `New-ApplicationDeploymentGroups`.
 
@@ -92,9 +93,27 @@ identifiers, command arguments or error messages.
 Turn it off with `Set-ModuleConfig -ModuleName tcs.intune.packaging -Telemetry $false`, or for all
 tcs modules with the environment variable `TCS_TELEMETRY_OPTOUT=1`.
 
+### Publishing to Intune
+
+`New-IntuneWin32Application` and `Publish-IntuneAppPackage` use Microsoft Graph v1.0: they create the
+`win32LobApp`, create a content version and content file, upload the encrypted content from the
+`.intunewin` file to the Azure Storage URI in blocks, commit it with the encryption information from
+`Detection.xml` and set the app's `committedContentVersion`. Detection and requirement rules come from
+`New-IntuneWin32Rule`.
+
+```powershell
+Connect-MgGraph -Scopes DeviceManagementApps.ReadWrite.All
+$rule = New-IntuneWin32Rule -RuleParentType detection -RuleType FileOrFolder -Path 'C:\Program Files\MyApp' -FileOrFolderName 'MyApp.exe' -OperationType exists
+New-IntuneWin32Application -Name 'MyApp' -Description 'My app' -Publisher 'Contoso' -InstallCommandLine 'setup.exe /S' -UninstallCommandLine 'setup.exe /U' -Rules $rule -IntuneWinFilePath .\setup.intunewin
+```
+
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md). Report security issues as described in [SECURITY.md](SECURITY.md).
+
+## Licence
+
+GNU General Public License v3.0; see [LICENSE](LICENSE).
 
 ## Author
 
