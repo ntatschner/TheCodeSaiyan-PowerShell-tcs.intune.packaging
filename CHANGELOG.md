@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-09-24
+
+### Added
+- Every exported command now reports anonymous usage telemetry through tcs.core
+  (`Invoke-TelemetryCollection` Start and End events, with the exception type on failure):
+  `ConvertTo-SignedScript`, `Get-IntunePackagingTool`, `Invoke-Executable`,
+  `New-ApplicationDeploymentGroup`, `New-IntuneApplication`, `New-IntuneWin32AppPackage`,
+  `New-IntuneWin32Rule`, `New-PackageJSON` and `Start-DownloadFile` join the commands that already
+  reported it. Command behaviour, output and `-WhatIf` handling are unchanged; telemetry is still
+  off with `Set-ModuleConfig -Telemetry $false` or `TCS_TELEMETRY_OPTOUT=1`.
+- A test that fails when an exported command does not report telemetry, and telemetry behaviour
+  tests for `New-IntuneWin32Rule`, `New-PackageJSON` and `Start-DownloadFile`.
+- `.github/scripts/module-smoke-tests.ps1`, run by the shared CI validation: imports the module
+  offline, checks the exported commands against the manifest and exercises `New-IntuneWin32Rule`,
+  `New-PackageJSON` and `New-ApplicationDeploymentGroup`.
+- `.github/PUBLISHING.md`, describing the release process, including that the publish workflow must
+  be started manually on the `v<version>` tag created by the tag workflow.
+
 ## [0.3.0] - 2026-09-24
 
 ### Breaking

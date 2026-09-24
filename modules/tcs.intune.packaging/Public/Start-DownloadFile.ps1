@@ -45,22 +45,46 @@ function Start-DownloadFile {
         [ValidateNotNullOrEmpty()]
         [string]$Name
     )
+    begin {
+        $TelemetryArgs = @{
+            ModuleName    = $MyInvocation.MyCommand.Module.Name
+            ModuleVersion = [string]$MyInvocation.MyCommand.Module.Version
+            CommandName   = $MyInvocation.MyCommand.Name
+            ExecutionID   = [guid]::NewGuid().ToString()
+        }
+        Invoke-TelemetryCollection @TelemetryArgs -Stage Start -ClearTimer
+        $TelemetryFailed = $false
+    }
     process {
-        $Destination = Join-Path -Path $Path -ChildPath $Name
-        if (-not $PSCmdlet.ShouldProcess($Destination, "Download $URL")) {
-            return
-        }
-        if (-not (Test-Path -Path $Path -PathType Container)) {
-            $null = New-Item -Path $Path -ItemType Directory -Force -ErrorAction Stop
-        }
         try {
-            Invoke-WebRequest -Uri $URL -OutFile $Destination -UseBasicParsing -ErrorAction Stop
+            $Destination = Join-Path -Path $Path -ChildPath $Name
+            if (-not $PSCmdlet.ShouldProcess($Destination, "Download $URL")) {
+                return
+            }
+            if (-not (Test-Path -Path $Path -PathType Container)) {
+                $null = New-Item -Path $Path -ItemType Directory -Force -ErrorAction Stop
+            }
+            try {
+                Invoke-WebRequest -Uri $URL -OutFile $Destination -UseBasicParsing -ErrorAction Stop
+            }
+            catch {
+                if (Test-Path -Path $Destination -PathType Leaf) {
+                    Remove-Item -Path $Destination -Force -ErrorAction SilentlyContinue
+                }
+                throw "Failed to download '$URL' to '$Destination': $($_.Exception.Message)"
+            }
         }
         catch {
-            if (Test-Path -Path $Destination -PathType Leaf) {
-                Remove-Item -Path $Destination -Force -ErrorAction SilentlyContinue
+            if (-not $TelemetryFailed) {
+                $TelemetryFailed = $true
+                Invoke-TelemetryCollection @TelemetryArgs -Stage End -Failed $true -Exception $_
             }
-            throw "Failed to download '$URL' to '$Destination': $($_.Exception.Message)"
+            throw
+        }
+    }
+    end {
+        if (-not $TelemetryFailed) {
+            Invoke-TelemetryCollection @TelemetryArgs -Stage End
         }
     }
 }

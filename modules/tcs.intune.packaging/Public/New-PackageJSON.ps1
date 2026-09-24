@@ -70,26 +70,40 @@ function New-PackageJSON {
         $MainInstaller
     )
 
-    $JSONFileName = "package-$($PackageName)-v$($Version).json"
-    $PackageJSONPath = Join-Path -Path $SourceDirectory -ChildPath $JSONFileName
-    $AllFiles = @(Get-ChildItem -Path $SourceDirectory -Recurse | Where-Object { $_.Name -ne $JSONFileName } | ForEach-Object { $_.Name })
-
-    $PackageJSON = [ordered]@{
-        PackageName   = $PackageName
-        Version       = $Version
-        Description   = $Description
-        Author        = $Author
-        MainInstaller = $MainInstaller
-        AllFiles      = $AllFiles -join ','
+    $TelemetryArgs = @{
+        ModuleName    = $MyInvocation.MyCommand.Module.Name
+        ModuleVersion = [string]$MyInvocation.MyCommand.Module.Version
+        CommandName   = $MyInvocation.MyCommand.Name
+        ExecutionID   = [guid]::NewGuid().ToString()
     }
+    Invoke-TelemetryCollection @TelemetryArgs -Stage Start -ClearTimer
+    try {
+        $JSONFileName = "package-$($PackageName)-v$($Version).json"
+        $PackageJSONPath = Join-Path -Path $SourceDirectory -ChildPath $JSONFileName
+        $AllFiles = @(Get-ChildItem -Path $SourceDirectory -Recurse | Where-Object { $_.Name -ne $JSONFileName } | ForEach-Object { $_.Name })
 
-    if ($PSCmdlet.ShouldProcess($PackageJSONPath, 'Write package JSON')) {
-        try {
-            $PackageJSON | ConvertTo-Json | Set-Content -Path $PackageJSONPath -Encoding UTF8 -ErrorAction Stop
+        $PackageJSON = [ordered]@{
+            PackageName   = $PackageName
+            Version       = $Version
+            Description   = $Description
+            Author        = $Author
+            MainInstaller = $MainInstaller
+            AllFiles      = $AllFiles -join ','
         }
-        catch {
-            throw "Failed to create $($PackageJSONPath): $($_.Exception.Message)"
+
+        if ($PSCmdlet.ShouldProcess($PackageJSONPath, 'Write package JSON')) {
+            try {
+                $PackageJSON | ConvertTo-Json | Set-Content -Path $PackageJSONPath -Encoding UTF8 -ErrorAction Stop
+            }
+            catch {
+                throw "Failed to create $($PackageJSONPath): $($_.Exception.Message)"
+            }
+            Get-Item -LiteralPath $PackageJSONPath
         }
-        Get-Item -LiteralPath $PackageJSONPath
+        Invoke-TelemetryCollection @TelemetryArgs -Stage End
+    }
+    catch {
+        Invoke-TelemetryCollection @TelemetryArgs -Stage End -Failed $true -Exception $_
+        throw
     }
 }

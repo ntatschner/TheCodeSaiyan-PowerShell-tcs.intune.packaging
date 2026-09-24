@@ -71,49 +71,63 @@ function Invoke-Executable {
         [parameter(Mandatory = $false, HelpMessage = "Specify whether to use the operating system shell to start the process.")]
         [bool]$UseShellExecute = $false
     )
-    if ($UseShellExecute -and ($RedirectStandardOutput -or $RedirectStandardError)) {
-        throw 'RedirectStandardOutput and RedirectStandardError must be $false when UseShellExecute is $true.'
+    $TelemetryArgs = @{
+        ModuleName    = $MyInvocation.MyCommand.Module.Name
+        ModuleVersion = [string]$MyInvocation.MyCommand.Module.Version
+        CommandName   = $MyInvocation.MyCommand.Name
+        ExecutionID   = [guid]::NewGuid().ToString()
     }
-
-    $ProcessStartInfoObject = New-Object -TypeName 'System.Diagnostics.ProcessStartInfo'
-    $ProcessStartInfoObject.FileName = $FilePath
-    $ProcessStartInfoObject.CreateNoWindow = $CreateNoWindow
-    $ProcessStartInfoObject.UseShellExecute = $UseShellExecute
-    $ProcessStartInfoObject.RedirectStandardOutput = $RedirectStandardOutput
-    $ProcessStartInfoObject.RedirectStandardError = $RedirectStandardError
-    if (-not [string]::IsNullOrEmpty($Arguments)) {
-        $ProcessStartInfoObject.Arguments = $Arguments
-    }
-
-    $Process = New-Object -TypeName 'System.Diagnostics.Process'
-    $Process.StartInfo = $ProcessStartInfoObject
+    Invoke-TelemetryCollection @TelemetryArgs -Stage Start -ClearTimer
     try {
+        if ($UseShellExecute -and ($RedirectStandardOutput -or $RedirectStandardError)) {
+            throw 'RedirectStandardOutput and RedirectStandardError must be $false when UseShellExecute is $true.'
+        }
+
+        $ProcessStartInfoObject = New-Object -TypeName 'System.Diagnostics.ProcessStartInfo'
+        $ProcessStartInfoObject.FileName = $FilePath
+        $ProcessStartInfoObject.CreateNoWindow = $CreateNoWindow
+        $ProcessStartInfoObject.UseShellExecute = $UseShellExecute
+        $ProcessStartInfoObject.RedirectStandardOutput = $RedirectStandardOutput
+        $ProcessStartInfoObject.RedirectStandardError = $RedirectStandardError
+        if (-not [string]::IsNullOrEmpty($Arguments)) {
+            $ProcessStartInfoObject.Arguments = $Arguments
+        }
+
+        $Process = New-Object -TypeName 'System.Diagnostics.Process'
+        $Process.StartInfo = $ProcessStartInfoObject
         try {
-            $null = $Process.Start()
-        }
-        catch {
-            throw "$($MyInvocation.MyCommand): Failed to start '$FilePath': $($_.Exception.Message)"
-        }
+            try {
+                $null = $Process.Start()
+            }
+            catch {
+                throw "$($MyInvocation.MyCommand): Failed to start '$FilePath': $($_.Exception.Message)"
+            }
 
-        # Read the redirected streams asynchronously; waiting for exit first can deadlock when a
-        # process fills the output buffer.
-        $StandardOutputTask = $null
-        $StandardErrorTask = $null
-        if ($RedirectStandardOutput) {
-            $StandardOutputTask = $Process.StandardOutput.ReadToEndAsync()
-        }
-        if ($RedirectStandardError) {
-            $StandardErrorTask = $Process.StandardError.ReadToEndAsync()
-        }
-        $Process.WaitForExit()
+            # Read the redirected streams asynchronously; waiting for exit first can deadlock when a
+            # process fills the output buffer.
+            $StandardOutputTask = $null
+            $StandardErrorTask = $null
+            if ($RedirectStandardOutput) {
+                $StandardOutputTask = $Process.StandardOutput.ReadToEndAsync()
+            }
+            if ($RedirectStandardError) {
+                $StandardErrorTask = $Process.StandardError.ReadToEndAsync()
+            }
+            $Process.WaitForExit()
 
-        [PSCustomObject]@{
-            ExitCode       = $Process.ExitCode
-            StandardOutput = $(if ($StandardOutputTask) { $StandardOutputTask.Result } else { $null })
-            StandardError  = $(if ($StandardErrorTask) { $StandardErrorTask.Result } else { $null })
+            [PSCustomObject]@{
+                ExitCode       = $Process.ExitCode
+                StandardOutput = $(if ($StandardOutputTask) { $StandardOutputTask.Result } else { $null })
+                StandardError  = $(if ($StandardErrorTask) { $StandardErrorTask.Result } else { $null })
+            }
         }
+        finally {
+            $Process.Dispose()
+        }
+        Invoke-TelemetryCollection @TelemetryArgs -Stage End
     }
-    finally {
-        $Process.Dispose()
+    catch {
+        Invoke-TelemetryCollection @TelemetryArgs -Stage End -Failed $true -Exception $_
+        throw
     }
 }
