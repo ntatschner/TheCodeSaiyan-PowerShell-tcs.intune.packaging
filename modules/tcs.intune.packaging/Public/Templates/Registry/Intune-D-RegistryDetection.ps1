@@ -16,29 +16,29 @@ foreach ($Path in $PathsToCheck) {
         $ConfigBase = if ($VersionInfo.target -eq "user") { $env:APPDATA } else { ${env:ProgramFiles(x86)} }
         $APFFullBase = Join-Path -Path $ConfigBase -ChildPath $APFBase
         $StorageFolderBase = "PersistentStorage"
-        $StorageFolderName = $(if ([string]::IsNullOrEmpty($ConfigBase.name)) {"registry"} {"$($ConfigBase.name)"})
+        $StorageFolderName = $(if ([string]::IsNullOrEmpty($ConfigBase.name)) { "registry" } else { "$($ConfigBase.name)" })
         $StorageFolderFullPath = Join-Path -Path $APFFullBase -ChildPath "$StorageFolderBase\$StorageFolderName"
-        $RegistryCSVFilePath = "$StorageFolderFullPath\$($InstallConfig.name)_Registry.csv"
+        $RegistryCSVFilePath = "$StorageFolderFullPath\$($AppName)_Registry.csv"
 
         if ($VersionInfo.version -eq $Version) {
             Write-Output "The version file exists and the version is correct"
             Write-Output "Now checking if deployment was successful depending on results in the registry CSV."
             $Props = @{
                 KeyName = $AppName
-                Result = ""
-                Error = ""
+                Result  = ""
+                Error   = ""
             }
             $OutputResults = @()
             $OverAllResult = $true
 
             if (Test-Path -Path $RegistryCSVFilePath) {
                 $RegistryCSV = Import-Csv -Path $RegistryCSVFilePath
-                $RegistryCSV | ForEach-Object {
-                    if ($_.Result -ne "Success") {
+                foreach ($Entry in $RegistryCSV) {
+                    if ($Entry.Result -ne "Success") {
                         $obj = New-Object -TypeName PSObject -Property $Props
-                        $obj.Result = $_.Result
-                        $obj.KeyName = "$($_.RegistryPath)\$($_.KeyName)\$($_.ValueName)"
-                        $obj.Error = $_.Error
+                        $obj.Result = $Entry.Result
+                        $obj.KeyName = "$($Entry.RegistryPath)\$($Entry.KeyName)\$($Entry.ValueName)"
+                        $obj.Error = $Entry.Error
                         $OutputResults += $obj
                         $OverAllResult = $false
                     }
@@ -55,7 +55,7 @@ foreach ($Path in $PathsToCheck) {
                 Write-Output "The registry CSV file does not exist"
                 exit 1
             }
-            
+
             exit 0
         }
         else {

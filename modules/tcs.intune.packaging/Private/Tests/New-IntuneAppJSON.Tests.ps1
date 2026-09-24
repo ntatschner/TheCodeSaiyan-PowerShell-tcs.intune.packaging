@@ -1,39 +1,31 @@
 BeforeAll {
-	$TestPath = Split-Path -Parent -Path $PSScriptRoot
-
-	$FunctionFileName = (Split-Path -Leaf $PSCommandPath ) -replace '\.Tests\.', '.'
-
-	# You can use this Variable to call your function via it's name or ignore/remove as required
-	$FunctionName = $FunctionFileName.Replace('.ps1', '')
-	
-	. $(Join-Path -Path $TestPath -ChildPath $FunctionFileName)
-}
-Describe -Name "Performing basic validation test on function $FunctionFileName" {
-	It "Function $FunctionFileName - Testing Command Output Object" {
-		# This is a template for the Pester Test, add any tests you want here
-	}
+    $env:TCS_CONFIG_ROOT = Join-Path -Path $TestDrive -ChildPath 'config'
+    $env:TCS_SKIP_UPDATE_CHECK = '1'
+    $env:TCS_TELEMETRY_OPTOUT = '1'
+    $ModuleRoot = Split-Path -Path (Split-Path -Path $PSScriptRoot -Parent) -Parent
+    Import-Module -Name (Join-Path -Path $ModuleRoot -ChildPath 'tcs.intune.packaging.psd1') -Force
 }
 
-Describe -Tags 'PSSA' -Name 'Testing against PSScriptAnalyzer rules' {
-	BeforeAll {
-		$ScriptAnalyzerSettings = Get-Content -Path (Join-Path -Path (Get-Location) -ChildPath 'PSScriptAnalyzerSettings.psd1') | Out-String | Invoke-Expression
-		$AnalyzerIssues = Invoke-ScriptAnalyzer -Path "$TestPath\$FunctionFileName" -Settings $ScriptAnalyzerSettings
-		$ScriptAnalyzerRuleNames = Get-ScriptAnalyzerRule | Select-Object -ExpandProperty RuleName
-	}
+AfterAll {
+    Remove-Module -Name tcs.intune.packaging -Force -ErrorAction SilentlyContinue
+}
+Describe 'New-IntuneAppJSON' {
+    It 'Separates the .intunewin parameters from the application parameters' {
+        $json = InModuleScope tcs.intune.packaging {
+            New-IntuneAppJSON -AppParams @{ ApplicationName = 'App'; MainInstallerFileName = 'setup.exe'; SourceFiles = @('a'); OutputFolder = 'out' }
+        }
+        $object = $json | ConvertFrom-Json
+        $object.ApplicationParameters.ApplicationName | Should -Be 'App'
+        $object.ApplicationParameters.PSObject.Properties.Name | Should -Not -Contain 'MainInstallerFileName'
+        $object.IntuneWinParameters.MainInstallerFileName | Should -Be 'setup.exe'
+        $object.IntuneWinParameters.OutputFolder | Should -Be 'out'
+    }
 
-	foreach ($Rule in $ScriptAnalyzerRuleNames) {
-		if ($ScriptAnalyzerSettings.excluderules -notcontains $Rule) {
-			It "Function $FunctionFileName should pass $Rule" {
-				$Failures = $AnalyzerIssues | Where-Object -Property RuleName -EQ -Value $rule
-				($Failures | Measure-Object).Count | Should -Be 0
-			}
-		}
-		else {
-			# We still want it in the tests, but since it doesn't actually get tested we will skip
-			It "Function $FunctionFileName should pass $Rule" -Skip {
-				$Failures = $AnalyzerIssues | Where-Object -Property RuleName -EQ -Value $rule
-				($Failures | Measure-Object).Count | Should -Be 0
-			}
-		}
-	}
+    It 'Does not change the hashtable it is given' {
+        InModuleScope tcs.intune.packaging {
+            $params = @{ ApplicationName = 'App'; MainInstallerFileName = 'setup.exe' }
+            $null = New-IntuneAppJSON -AppParams $params
+            $params.ContainsKey('MainInstallerFileName') | Should -BeTrue
+        }
+    }
 }

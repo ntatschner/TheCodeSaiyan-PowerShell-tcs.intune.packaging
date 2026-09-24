@@ -34,7 +34,8 @@ jobs:
       module-name: 'tcs.intune.packaging'
       module-path: 'modules/tcs.intune.packaging'
       docs-path: './docs'
-      commit-docs: true
+      # Pull request runs only check that docs generate; the PR merge ref cannot be pushed to
+      commit-docs: ${{ github.event_name != 'pull_request' }}
       commit-message: 'docs: auto-generated PowerShell help via PlatyPS [skip ci]'
       locale: 'en-GB'
       ref: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || '' }}

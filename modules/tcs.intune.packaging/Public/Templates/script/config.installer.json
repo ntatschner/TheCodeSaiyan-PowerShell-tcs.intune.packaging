@@ -1,0 +1,10 @@
+{
+    "name": "##NAME_TEMPLATE",
+    "version": "##VERSION_TEMPLATE",
+    "target": "system",
+    "scriptfile": "##SCRIPTFILE_TEMPLATE",
+    "includedfiles": "",
+    "precommandfile": "Intune-Pre-Install.ps1",
+    "postcommandfile": "Intune-Post-Install.ps1",
+    "packagedby": ""
+}

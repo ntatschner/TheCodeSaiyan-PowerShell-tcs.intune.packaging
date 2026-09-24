@@ -1,58 +1,48 @@
-# Validates the Intune logo image file complies with the requirements of a PNG or JPG with a max resolution of 256x256 pixels.
 function Test-IntuneLogoImage {
     <#
-.SYNOPSIS
-Tests if an Intune logo image file complies with the requirements of a PNG or JPG with a max resolution of 256x256 pixels.
+    .SYNOPSIS
+        Tests that an image can be used as an Intune application logo.
 
-.DESCRIPTION
-The Test-IntuneLogoImage function validates an image file based on the following criteria:
-- The file exists
-- The file is a PNG or JPG
-- The image resolution is less than or equal to 256x256 pixels
+    .DESCRIPTION
+        Returns $true when the file exists, is a PNG or JPG (.png, .jpg or .jpeg) and is at most
+        256x256 pixels. Otherwise writes an error and returns $false.
+        Reading the image size uses System.Drawing, which needs Windows.
 
-.PARAMETER Path
-The path of the image file to validate.
+    .PARAMETER Path
+        The path of the image file to validate.
 
-.EXAMPLE
-Test-IntuneLogoImage -Path "C:\path\to\image.png"
-
-This command tests if the image at the specified path is a valid Intune logo image.
-
-.OUTPUTS
-Boolean. Returns $true if the image is a valid Intune logo image, and $false otherwise.
-
-.NOTES
-Additional information about the function.
-#>
+    .EXAMPLE
+        Test-IntuneLogoImage -Path "C:\path\to\image.png"
+    #>
     [CmdletBinding()]
+    [OutputType([bool])]
     param (
         [Parameter(Mandatory = $true)]
         [string]$Path
     )
-    begin {
-        $FileName = Split-Path -Path $Path -Leaf
-    }
     process {
-        # Validate the file exists
-        if (-not (Test-Path -Path $Path)) {
+        $FileName = Split-Path -Path $Path -Leaf
+        if (-not (Test-Path -Path $Path -PathType Leaf)) {
             Write-Error "The image '$FileName' does not exist."
             return $false
         }
-        # Validate the file is a PNG or JPG
         $extension = [System.IO.Path]::GetExtension($Path)
-        if ($extension -ne ".png" -and $extension -ne ".jpg") {
-            Write-Error "The The image '$FileName' is not a PNG or JPG."
+        if ($extension -notin @('.png', '.jpg', '.jpeg')) {
+            Write-Error "The image '$FileName' is not a PNG or JPG."
             return $false
         }
-        # Validate the file is less than 256x256 pixels
-        $image = [System.Drawing.Image]::FromFile($Path)
-        if ($image.Width -gt 256 -or $image.Height -gt 256) {
-            Write-Error "The image '$FileName' is larger than 256x256 pixels."
+        # System.Drawing is not loaded by default in Windows PowerShell 5.1
+        Add-Type -AssemblyName System.Drawing -ErrorAction Stop
+        $image = [System.Drawing.Image]::FromFile((Resolve-Path -Path $Path).ProviderPath)
+        try {
+            if ($image.Width -gt 256 -or $image.Height -gt 256) {
+                Write-Error "The image '$FileName' is larger than 256x256 pixels."
+                return $false
+            }
+        }
+        finally {
             $image.Dispose()
-            return $false
         }
-        # Dispose of the image
-        $image.Dispose()
         return $true
     }
 }

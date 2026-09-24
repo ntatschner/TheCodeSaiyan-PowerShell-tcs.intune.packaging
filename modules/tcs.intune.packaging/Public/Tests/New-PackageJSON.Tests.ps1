@@ -1,0 +1,46 @@
+BeforeAll {
+    $env:TCS_CONFIG_ROOT = Join-Path -Path $TestDrive -ChildPath 'config'
+    $env:TCS_SKIP_UPDATE_CHECK = '1'
+    $env:TCS_TELEMETRY_OPTOUT = '1'
+    $ModuleRoot = Split-Path -Path (Split-Path -Path $PSScriptRoot -Parent) -Parent
+    Import-Module -Name (Join-Path -Path $ModuleRoot -ChildPath 'tcs.intune.packaging.psd1') -Force
+}
+
+AfterAll {
+    Remove-Module -Name tcs.intune.packaging -Force -ErrorAction SilentlyContinue
+}
+
+Describe 'New-PackageJSON' {
+    BeforeEach {
+        $Source = Join-Path -Path $TestDrive -ChildPath ([guid]::NewGuid().ToString())
+        $null = New-Item -Path (Join-Path -Path $Source -ChildPath 'sub') -ItemType Directory -Force
+        Set-Content -Path (Join-Path -Path $Source -ChildPath 'setup.exe') -Value 'x'
+        Set-Content -Path (Join-Path -Path $Source -ChildPath 'sub/readme.txt') -Value 'x'
+    }
+
+    It 'Writes the package metadata to the source directory' {
+        $file = New-PackageJSON -PackageName 'MyApp' -Version '1.2.3' -Description 'Desc' -Author 'IT' -SourceDirectory $Source -MainInstaller 'setup.exe'
+        $file.Name | Should -Be 'package-MyApp-v1.2.3.json'
+        $json = Get-Content -Path $file.FullName -Raw | ConvertFrom-Json
+        $json.PackageName | Should -Be 'MyApp'
+        $json.Version | Should -Be '1.2.3'
+        $json.MainInstaller | Should -Be 'setup.exe'
+        ($json.AllFiles -split ',') | Should -Contain 'setup.exe'
+        ($json.AllFiles -split ',') | Should -Contain 'readme.txt'
+    }
+
+    It 'Does not list its own metadata file when run again' {
+        $null = New-PackageJSON -PackageName 'MyApp' -Version '1.0' -Description 'Desc' -Author 'IT' -SourceDirectory $Source -MainInstaller 'setup.exe'
+        $file = New-PackageJSON -PackageName 'MyApp' -Version '1.0' -Description 'Desc' -Author 'IT' -SourceDirectory $Source -MainInstaller 'setup.exe'
+        (Get-Content -Path $file.FullName -Raw | ConvertFrom-Json).AllFiles | Should -Not -Match 'package-MyApp'
+    }
+
+    It 'Writes nothing with -WhatIf' {
+        New-PackageJSON -PackageName 'MyApp' -Version '1.0' -Description 'Desc' -Author 'IT' -SourceDirectory $Source -MainInstaller 'setup.exe' -WhatIf
+        Join-Path -Path $Source -ChildPath 'package-MyApp-v1.0.json' | Should -Not -Exist
+    }
+
+    It 'Rejects a source directory that does not exist' {
+        { New-PackageJSON -PackageName 'MyApp' -Version '1.0' -Description 'D' -Author 'IT' -SourceDirectory (Join-Path -Path $TestDrive -ChildPath 'nope') -MainInstaller 'setup.exe' } | Should -Throw
+    }
+}
