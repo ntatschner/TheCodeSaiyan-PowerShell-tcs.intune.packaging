@@ -1,62 +1,74 @@
 ---
 external help file: tcs.intune.packaging-help.xml
 Module Name: tcs.intune.packaging
-online version: https://PENDIINGHOST/tcs.intune.packaging/docs/New-APFDeployment.html
+online version: https://learn.microsoft.com/graph/api/intune-apps-win32lobapp-create
 schema: 2.0.0
 ---
 
 # New-IntuneWin32Application
 
 ## SYNOPSIS
-Creates or clones a Win32 application in Microsoft Intune.
+Creates a Win32 application in Microsoft Intune and uploads its .intunewin package.
 
 ## SYNTAX
 
-### CloneExistingPackage
+### NewPackage (Default)
 ```
-New-IntuneWin32Application [-Name <String>] [-Description <String>] -Version <Version> [-Publisher <String>]
+New-IntuneWin32Application -Name <String> -Description <String> [-Version <Version>] -Publisher <String>
  [-Owner <String>] [-Developer <String>] [-Notes <String>] [-PrivacyInformationUrl <String>]
  [-InformationUrl <String>] [-IsFeatured <Boolean>] [-ApplicableArchitectures <String>]
  [-MinimumFreeDiskSpaceInMB <Int32>] [-MinimumMemoryInMB <Int32>] [-MinimumNumberOfProcessors <Int32>]
  [-MinimumCpuSpeedInMHz <Int32>] [-InstallExperienceRunAsAccount <String>]
  [-InstallExperienceDeviceRestartBehavior <String>] [-MinimumSupportedWindowsRelease <String>]
- [-Rules <Hashtable[]>] [-IconFilePath <String>] -IntuneWinFilePath <String> [-ExistingPackage <String>]
- [-ProgressAction <ActionPreference>] [<CommonParameters>]
+ -InstallCommandLine <String> -UninstallCommandLine <String> -Rules <Hashtable[]> [-ReturnCodes <Hashtable[]>]
+ [-IconFilePath <String>] -IntuneWinFilePath <String> [-PollIntervalSeconds <Int32>] [-TimeoutSeconds <Int32>]
+ [-ProgressAction <ActionPreference>] [-WhatIf] [-Confirm] [<CommonParameters>]
 ```
 
-### NewPackage
+### CloneExistingPackage
 ```
-New-IntuneWin32Application -Name <String> -Description <String> -Version <Version> -Publisher <String>
- -Owner <String> -Developer <String> [-Notes <String>] [-PrivacyInformationUrl <String>]
+New-IntuneWin32Application [-Name <String>] [-Description <String>] [-Version <Version>] [-Publisher <String>]
+ [-Owner <String>] [-Developer <String>] [-Notes <String>] [-PrivacyInformationUrl <String>]
  [-InformationUrl <String>] [-IsFeatured <Boolean>] [-ApplicableArchitectures <String>]
  [-MinimumFreeDiskSpaceInMB <Int32>] [-MinimumMemoryInMB <Int32>] [-MinimumNumberOfProcessors <Int32>]
  [-MinimumCpuSpeedInMHz <Int32>] [-InstallExperienceRunAsAccount <String>]
  [-InstallExperienceDeviceRestartBehavior <String>] [-MinimumSupportedWindowsRelease <String>]
- [-Rules <Hashtable[]>] [-IconFilePath <String>] -IntuneWinFilePath <String>
- [-ProgressAction <ActionPreference>] [<CommonParameters>]
+ [-InstallCommandLine <String>] [-UninstallCommandLine <String>] [-Rules <Hashtable[]>]
+ [-ReturnCodes <Hashtable[]>] [-IconFilePath <String>] -IntuneWinFilePath <String> -ExistingPackage <String>
+ [-PollIntervalSeconds <Int32>] [-TimeoutSeconds <Int32>] [-ProgressAction <ActionPreference>] [-WhatIf]
+ [-Confirm] [<CommonParameters>]
 ```
 
 ## DESCRIPTION
-The New-IntuneWin32Application function creates a new Win32 application in Microsoft Intune or clones
-an existing application.
-It supports creating applications from scratch or duplicating existing ones
-with modified properties using Microsoft Graph API.
+The New-IntuneWin32Application function creates a win32LobApp in Microsoft Intune with
+Microsoft Graph (POST /deviceAppManagement/mobileApps), uploads the encrypted content of the
+package (.intunewin file) to Azure Storage, commits it and sets the app's committed content version.
+The app is returned when the upload is complete.
+
+With ExistingPackage the properties of an existing Win32 app are copied (display name,
+description, publisher, owner, developer, notes, URLs, command lines, rules, return codes,
+install experience and requirements); parameters you specify win over the copied values.
+Assignments and supersedence are not copied.
+
+Requires the Microsoft.Graph.Authentication module and a connection made with
+Connect-MgGraph -Scopes DeviceManagementApps.ReadWrite.All.
 
 ## EXAMPLES
 
 ### EXAMPLE 1
 ```
-New-IntuneWin32Application -Name "MyApp" -Description "My Application" -Version "1.0.0" -Publisher "Contoso" -Owner "IT Admin" -Developer "Dev Team"
+$detection = New-IntuneWin32Rule -RuleParentType detection -RuleType MSI -MSIPath .\setup.msi -AutoDetect $true
+New-IntuneWin32Application -Name "MyApp" -Description "My Application" -Publisher "Contoso" -Owner "IT" -Developer "Dev Team" -InstallCommandLine 'msiexec /i "setup.msi" /qn' -UninstallCommandLine 'msiexec /x "setup.msi" /qn' -Rules $detection -IntuneWinFilePath .\setup.intunewin
 ```
 
-Creates a new Win32 application in Intune.
+Creates the app with an MSI detection rule and uploads setup.intunewin.
 
 ### EXAMPLE 2
 ```
-New-IntuneWin32Application -Name "MyApp v2" -Version "2.0.0" -CloneExistingPackage
+New-IntuneWin32Application -ExistingPackage "MyApp | 00000000-0000-0000-0000-000000000000" -Version "2.0.0" -IntuneWinFilePath .\MyApp-2.0.intunewin
 ```
 
-Clones an existing application with a new version.
+Creates a new app with the settings of an existing one and uploads the new package.
 
 ## PARAMETERS
 
@@ -64,389 +76,667 @@ Clones an existing application with a new version.
 The display name of the application.
 
 ```yaml
-Type: String
-Parameter Sets: CloneExistingPackage
+Type:String
+Parameter Sets: NewPackage
 Aliases:
-
-Required: False
-Position: Named
+Required: True
+Position:Named
+Default value: None
+Default value: None
 Default value: None
 Accept pipeline input: False
+input:False
+Accept pipeline input: False
+Accept wildcard characters: False
 Accept wildcard characters: False
 ```
 
 ```yaml
-Type: String
-Parameter Sets: NewPackage
+Type:String
+Parameter Sets: CloneExistingPackage
 Aliases:
-
-Required: True
-Position: Named
+Required: False
+Position:Named
+Default value: None
+Default value: None
 Default value: None
 Accept pipeline input: False
+input:False
+Accept pipeline input: False
+Accept wildcard characters: False
 Accept wildcard characters: False
 ```
 
 ### -Description
-A description of the application and its purpose.
+A description of the application.
 
 ```yaml
-Type: String
-Parameter Sets: CloneExistingPackage
+Type:String
+Parameter Sets: NewPackage
 Aliases:
-
-Required: False
-Position: Named
+Required: True
+Position:Named
+Default value: None
+Default value: None
 Default value: None
 Accept pipeline input: False
+input:False
+Accept pipeline input: False
+Accept wildcard characters: False
 Accept wildcard characters: False
 ```
 
 ```yaml
-Type: String
-Parameter Sets: NewPackage
+Type:String
+Parameter Sets: CloneExistingPackage
 Aliases:
-
-Required: True
-Position: Named
+Required: False
+Position:Named
+Default value: None
+Default value: None
 Default value: None
 Accept pipeline input: False
+input:False
+Accept pipeline input: False
+Accept wildcard characters: False
 Accept wildcard characters: False
 ```
 
 ### -Version
-The version number of the application.
+The application version.
+Graph v1.0 has no version property for Win32 apps, so the version is
+added to the notes as "Version: \<version\>" unless the notes already contain it.
 
 ```yaml
-Type: Version
-Parameter Sets: (All)
+Type:Version
+Parameter Sets:   (All)
 Aliases:
-
-Required: True
-Position: Named
+Required: False
+Position:Named
+Default value: None
+Default value: None
 Default value: None
 Accept pipeline input: False
+input:False
+Accept pipeline input: False
+Accept wildcard characters: False
 Accept wildcard characters: False
 ```
 
 ### -Publisher
-The publisher or vendor of the application.
+The publisher of the application.
 
 ```yaml
-Type: String
-Parameter Sets: CloneExistingPackage
+Type:String
+Parameter Sets: NewPackage
 Aliases:
-
-Required: False
-Position: Named
+Required: True
+Position:Named
+Default value: None
+Default value: None
 Default value: None
 Accept pipeline input: False
+input:False
+Accept pipeline input: False
+Accept wildcard characters: False
 Accept wildcard characters: False
 ```
 
 ```yaml
-Type: String
-Parameter Sets: NewPackage
+Type:String
+Parameter Sets: CloneExistingPackage
 Aliases:
-
-Required: True
-Position: Named
+Required: False
+Position:Named
+Default value: None
+Default value: None
 Default value: None
 Accept pipeline input: False
+input:False
+Accept pipeline input: False
+Accept wildcard characters: False
 Accept wildcard characters: False
 ```
 
 ### -Owner
-The owner or responsible party for the application.
+The owner of the application.
 
 ```yaml
-Type: String
-Parameter Sets: CloneExistingPackage
+Type:String
+Parameter Sets:   (All)
 Aliases:
-
 Required: False
-Position: Named
+Position:Named
 Default value: None
+Default value: None
+Default value: None
+Accept pipeline input: False
+input:False
 Accept pipeline input: False
 Accept wildcard characters: False
-```
-
-```yaml
-Type: String
-Parameter Sets: NewPackage
-Aliases:
-
-Required: True
-Position: Named
-Default value: None
-Accept pipeline input: False
 Accept wildcard characters: False
 ```
 
 ### -Developer
-The developer or creator of the application.
+The developer of the application.
 
 ```yaml
-Type: String
-Parameter Sets: CloneExistingPackage
+Type:String
+Parameter Sets:   (All)
 Aliases:
-
 Required: False
-Position: Named
+Position:Named
 Default value: None
+Default value: None
+Default value: None
+Accept pipeline input: False
+input:False
 Accept pipeline input: False
 Accept wildcard characters: False
-```
-
-```yaml
-Type: String
-Parameter Sets: NewPackage
-Aliases:
-
-Required: True
-Position: Named
-Default value: None
-Accept pipeline input: False
 Accept wildcard characters: False
 ```
 
 ### -Notes
-Additional notes or information about the application.
+Notes for the application.
 
 ```yaml
-Type: String
-Parameter Sets: (All)
+Type:String
+Parameter Sets:   (All)
 Aliases:
-
 Required: False
-Position: Named
+Position:Named
+Default value: None
+Default value: None
 Default value: None
 Accept pipeline input: False
+input:False
+Accept pipeline input: False
+Accept wildcard characters: False
 Accept wildcard characters: False
 ```
 
 ### -PrivacyInformationUrl
-URL to the application's privacy information or policy.
+URL of the privacy statement.
 
 ```yaml
-Type: String
-Parameter Sets: (All)
+Type:String
+Parameter Sets:   (All)
 Aliases:
-
 Required: False
-Position: Named
+Position:Named
+Default value: None
+Default value: None
 Default value: None
 Accept pipeline input: False
+input:False
+Accept pipeline input: False
+Accept wildcard characters: False
 Accept wildcard characters: False
 ```
 
 ### -InformationUrl
-URL to additional information about the application.
+URL with more information about the application.
 
 ```yaml
-Type: String
-Parameter Sets: (All)
+Type:String
+Parameter Sets:   (All)
 Aliases:
-
 Required: False
-Position: Named
+Position:Named
+Default value: None
+Default value: None
 Default value: None
 Accept pipeline input: False
+input:False
+Accept pipeline input: False
+Accept wildcard characters: False
 Accept wildcard characters: False
 ```
 
 ### -IsFeatured
-Boolean indicating whether the application should be featured in the Company Portal.
+Whether the application is featured in the Company Portal.
 
 ```yaml
-Type: Boolean
-Parameter Sets: (All)
+Type:Boolean
+Parameter Sets:   (All)
 Aliases:
-
 Required: False
-Position: Named
+Position:Named
+Default value: None
+Default value: None
 Default value: False
 Accept pipeline input: False
+input:False
+Accept pipeline input: False
+Accept wildcard characters: False
 Accept wildcard characters: False
 ```
 
 ### -ApplicableArchitectures
-{{ Fill ApplicableArchitectures Description }}
+The architectures the app applies to: x86, x64, arm or neutral.
+Default is x64.
 
 ```yaml
-Type: String
-Parameter Sets: (All)
+Type:String
+Parameter Sets:   (All)
 Aliases:
-
 Required: False
-Position: Named
+Position:Named
+Default value: None
+Default value: None
 Default value: X64
 Accept pipeline input: False
+input:False
+Accept pipeline input: False
+Accept wildcard characters: False
 Accept wildcard characters: False
 ```
 
 ### -MinimumFreeDiskSpaceInMB
-{{ Fill MinimumFreeDiskSpaceInMB Description }}
+The minimum free disk space, in MB, required to install the app.
 
 ```yaml
-Type: Int32
-Parameter Sets: (All)
+Type:
+Int32
+Parameter Sets:   (All)
 Aliases:
-
 Required: False
-Position: Named
+Position:Named
+Default value: None
+Default value: None
 Default value: 0
 Accept pipeline input: False
+input:False
+Accept pipeline input: False
+Accept wildcard characters: False
 Accept wildcard characters: False
 ```
 
 ### -MinimumMemoryInMB
-{{ Fill MinimumMemoryInMB Description }}
+The minimum physical memory, in MB, required to install the app.
 
 ```yaml
-Type: Int32
-Parameter Sets: (All)
+Type:
+Int32
+Parameter Sets:   (All)
 Aliases:
-
 Required: False
-Position: Named
+Position:Named
+Default value: None
+Default value: None
 Default value: 0
 Accept pipeline input: False
+input:False
+Accept pipeline input: False
+Accept wildcard characters: False
 Accept wildcard characters: False
 ```
 
 ### -MinimumNumberOfProcessors
-{{ Fill MinimumNumberOfProcessors Description }}
+The minimum number of processors required to install the app.
 
 ```yaml
-Type: Int32
-Parameter Sets: (All)
+Type:
+Int32
+Parameter Sets:   (All)
 Aliases:
-
 Required: False
-Position: Named
+Position:Named
+Default value: None
+Default value: None
 Default value: 0
 Accept pipeline input: False
+input:False
+Accept pipeline input: False
+Accept wildcard characters: False
 Accept wildcard characters: False
 ```
 
 ### -MinimumCpuSpeedInMHz
-{{ Fill MinimumCpuSpeedInMHz Description }}
+The minimum CPU speed, in MHz, required to install the app.
 
 ```yaml
-Type: Int32
-Parameter Sets: (All)
+Type:
+Int32
+Parameter Sets:   (All)
 Aliases:
-
 Required: False
-Position: Named
+Position:Named
+Default value: None
+Default value: None
 Default value: 0
 Accept pipeline input: False
+input:False
+Accept pipeline input: False
+Accept wildcard characters: False
 Accept wildcard characters: False
 ```
 
 ### -InstallExperienceRunAsAccount
-{{ Fill InstallExperienceRunAsAccount Description }}
+The context the app is installed in: system or user.
+Default is system.
 
 ```yaml
-Type: String
-Parameter Sets: (All)
+Type:String
+Parameter Sets:   (All)
 Aliases:
-
 Required: False
-Position: Named
+Position:Named
+Default value: None
+Default value: None
 Default value: System
 Accept pipeline input: False
+input:False
+Accept pipeline input: False
+Accept wildcard characters: False
 Accept wildcard characters: False
 ```
 
 ### -InstallExperienceDeviceRestartBehavior
-{{ Fill InstallExperienceDeviceRestartBehavior Description }}
+The restart behaviour: basedOnReturnCode, allow, suppress or force.
+Default is basedOnReturnCode.
 
 ```yaml
-Type: String
-Parameter Sets: (All)
+Type:String
+Parameter Sets:   (All)
 Aliases:
-
 Required: False
-Position: Named
-Default value: Suppress
+Position:Named
+Default value: None
+Default value: None
+Default value: BasedOnReturnCode
 Accept pipeline input: False
+input:False
+Accept pipeline input: False
+Accept wildcard characters: False
 Accept wildcard characters: False
 ```
 
 ### -MinimumSupportedWindowsRelease
-{{ Fill MinimumSupportedWindowsRelease Description }}
+The minimum supported Windows release, for example 'Windows11_23H2'.
+Not sent when omitted.
 
 ```yaml
-Type: String
-Parameter Sets: (All)
+Type:String
+Parameter Sets:   (All)
 Aliases:
-
 Required: False
-Position: Named
-Default value: 22h2
+Position:Named
+Default value: None
+Default value: None
+Default value: None
 Accept pipeline input: False
+input:False
+Accept pipeline input: False
+Accept wildcard characters: False
+Accept wildcard characters: False
+```
+
+### -InstallCommandLine
+The command line that installs the app, for example 'msiexec /i "setup.msi" /qn'.
+
+```yaml
+Type:String
+Parameter Sets: NewPackage
+Aliases:
+Required: True
+Position:Named
+Default value: None
+Default value: None
+Default value: None
+Accept pipeline input: False
+input:False
+Accept pipeline input: False
+Accept wildcard characters: False
+Accept wildcard characters: False
+```
+
+```yaml
+Type:String
+Parameter Sets: CloneExistingPackage
+Aliases:
+Required: False
+Position:Named
+Default value: None
+Default value: None
+Default value: None
+Accept pipeline input: False
+input:False
+Accept pipeline input: False
+Accept wildcard characters: False
+Accept wildcard characters: False
+```
+
+### -UninstallCommandLine
+The command line that uninstalls the app.
+
+```yaml
+Type:String
+Parameter Sets: NewPackage
+Aliases:
+Required: True
+Position:Named
+Default value: None
+Default value: None
+Default value: None
+Accept pipeline input: False
+input:False
+Accept pipeline input: False
+Accept wildcard characters: False
+Accept wildcard characters: False
+```
+
+```yaml
+Type:String
+Parameter Sets: CloneExistingPackage
+Aliases:
+Required: False
+Position:Named
+Default value: None
+Default value: None
+Default value: None
+Accept pipeline input: False
+input:False
+Accept pipeline input: False
+Accept wildcard characters: False
 Accept wildcard characters: False
 ```
 
 ### -Rules
-{{ Fill Rules Description }}
+Detection and requirement rules created with New-IntuneWin32Rule.
+At least one detection rule
+is required for a new app.
 
 ```yaml
 Type: Hashtable[]
-Parameter Sets: (All)
+Parameter Sets: NewPackage
 Aliases:
-
-Required: False
-Position: Named
+Required: True
+Position:Named
+Default value: None
+Default value: None
 Default value: None
 Accept pipeline input: False
+input:False
+Accept pipeline input: False
+Accept wildcard characters: False
+Accept wildcard characters: False
+```
+
+```yaml
+Type: Hashtable[]
+Parameter Sets: CloneExistingPackage
+Aliases:
+Required: False
+Position:Named
+Default value: None
+Default value: None
+Default value: None
+Accept pipeline input: False
+input:False
+Accept pipeline input: False
+Accept wildcard characters: False
+Accept wildcard characters: False
+```
+
+### -ReturnCodes
+Return codes as hashtables with returnCode and type (success, failed, softReboot, hardReboot,
+retry).
+Default: 0 and 1707 success, 3010 softReboot, 1641 hardReboot, 1618 retry.
+
+```yaml
+Type: Hashtable[]
+Parameter Sets:   (All)
+Aliases:
+Required: False
+Position:Named
+Default value: None
+Default value: None
+Default value: None
+Accept pipeline input: False
+input:False
+Accept pipeline input: False
+Accept wildcard characters: False
 Accept wildcard characters: False
 ```
 
 ### -IconFilePath
-{{ Fill IconFilePath Description }}
+Path to a PNG or JPG icon for the app.
 
 ```yaml
-Type: String
-Parameter Sets: (All)
+Type:String
+Parameter Sets:   (All)
 Aliases:
-
 Required: False
-Position: Named
+Position:Named
+Default value: None
+Default value: None
 Default value: None
 Accept pipeline input: False
+input:False
+Accept pipeline input: False
+Accept wildcard characters: False
 Accept wildcard characters: False
 ```
 
 ### -IntuneWinFilePath
-{{ Fill IntuneWinFilePath Description }}
+The path to the .intunewin package file.
 
 ```yaml
-Type: String
-Parameter Sets: (All)
+Type:String
+Parameter Sets:   (All)
 Aliases:
-
 Required: True
-Position: Named
+Position:Named
+Default value: None
+Default value: None
 Default value: None
 Accept pipeline input: False
+input:False
+Accept pipeline input: False
+Accept wildcard characters: False
 Accept wildcard characters: False
 ```
 
 ### -ExistingPackage
-{{ Fill ExistingPackage Description }}
+The existing application to clone, as "\<DisplayName\> | \<Id\>" or just the app ID.
+Tab completion
+lists the Win32 apps in the connected tenant.
 
 ```yaml
-Type: String
+Type:String
 Parameter Sets: CloneExistingPackage
 Aliases:
-
-Required: False
-Position: Named
+Required: True
+Position:Named
+Default value: None
+Default value: None
 Default value: None
 Accept pipeline input: False
+input:False
+Accept pipeline input: False
+Accept wildcard characters: False
+Accept wildcard characters: False
+```
+
+### -PollIntervalSeconds
+How often to check the upload and commit state.
+Default is 5 seconds.
+
+```yaml
+Type:
+Int32
+Parameter Sets:   (All)
+Aliases:
+Required: False
+Position:Named
+Default value: None
+Default value: None
+Default value: 5
+Accept pipeline input: False
+input:False
+Accept pipeline input: False
+Accept wildcard characters: False
+Accept wildcard characters: False
+```
+
+### -TimeoutSeconds
+How long to wait for each upload or commit state.
+Default is 600 seconds.
+
+```yaml
+Type:
+Int32
+Parameter Sets:   (All)
+Aliases:
+Required: False
+Position:Named
+Default value: None
+Default value: None
+Default value: 600
+Accept pipeline input: False
+input:False
+Accept pipeline input: False
+Accept wildcard characters: False
+Accept wildcard characters: False
+```
+
+### -WhatIf
+Shows what would happen if the cmdlet runs.
+The cmdlet is not run.
+
+```yaml
+Type:Switch
+Parameter Sets:   (All)
+Aliases:wi
+Required: False
+Position:Named
+Default value: None
+Default value: None
+Default value: None
+Accept pipeline input: False
+input:False
+Accept pipeline input: False
+Accept wildcard characters: False
+Accept wildcard characters: False
+```
+
+### -Confirm
+Prompts you for confirmation before running the cmdlet.
+
+```yaml
+Type:Switch
+Parameter Sets:   (All)
+Aliases:cf
+Required: False
+Position:Named
+Default value: None
+Default value: None
+Default value: None
+Accept pipeline input: False
+input:False
+Accept pipeline input: False
+Accept wildcard characters: False
 Accept wildcard characters: False
 ```
 
@@ -454,14 +744,18 @@ Accept wildcard characters: False
 {{ Fill ProgressAction Description }}
 
 ```yaml
-Type: ActionPreference
-Parameter Sets: (All)
-Aliases: proga
-
+Type:ActionPreference
+Parameter Sets:   (All)
+Aliases:proga
 Required: False
-Position: Named
+Position:Named
+Default value: None
+Default value: None
 Default value: None
 Accept pipeline input: False
+input:False
+Accept pipeline input: False
+Accept wildcard characters: False
 Accept wildcard characters: False
 ```
 
@@ -472,8 +766,11 @@ This cmdlet supports the common parameters: -Debug, -ErrorAction, -ErrorVariable
 
 ## OUTPUTS
 
+### System.Management.Automation.PSCustomObject
+### The created win32LobApp as returned by Microsoft Graph, with committedContentVersion set.
 ## NOTES
-Requires PowerShell Core and the Microsoft.Graph.Authentication and Microsoft.Graph.Devices.CorporateManagement modules.
-Must be connected to Microsoft Graph with appropriate permissions before running this function.
 
 ## RELATED LINKS
+
+[https://learn.microsoft.com/graph/api/intune-apps-win32lobapp-create](https://learn.microsoft.com/graph/api/intune-apps-win32lobapp-create)
+

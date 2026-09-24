@@ -1,106 +1,227 @@
 ---
 external help file: tcs.intune.packaging-help.xml
 Module Name: tcs.intune.packaging
-online version: https://github.com/microsoft/Microsoft-Win32-Content-Prep-Tool
+online version:
 schema: 2.0.0
 ---
 
 # Publish-IntuneAppPackage
 
 ## SYNOPSIS
-Publishes an Intune Win32 application package to Microsoft Intune.
+Publishes an Intune Win32 application package (.intunewin and its JSON configuration) to Microsoft Intune.
 
 ## SYNTAX
 
 ```
 Publish-IntuneAppPackage [-IntuneAppJSONPath] <String> [-IntuneWinPath] <String> [-Force] [-NoTenantDetails]
- [-ProgressAction <ActionPreference>] [<CommonParameters>]
+ [[-Rules] <Hashtable[]>] [[-PollIntervalSeconds] <Int32>] [[-TimeoutSeconds] <Int32>]
+ [-ProgressAction <ActionPreference>] [-WhatIf] [-Confirm] [<CommonParameters>]
 ```
 
 ## DESCRIPTION
-The Publish-IntuneAppPackage function uploads a Win32 application package (.intunewin file)
-along with its configuration JSON to Microsoft Intune.
-It checks for existing applications
-and can optionally update them.
+The Publish-IntuneAppPackage function reads the application configuration JSON created by
+New-IntuneApplication and publishes the .intunewin package with Microsoft Graph:
+
+  - When no app with the same display name exists, it creates the Win32 app and uploads the
+    package (see New-IntuneWin32Application).
+  - When a Win32 app with the same display name exists, it stops unless -Force is used; with
+    -Force it uploads the package as a new content version of the existing app.
+
+The detection and requirement rules come from -Rules or, when omitted, from
+DetectionRuleConfig and RequirementRuleConfig in the JSON file.
+They must be rules created with
+New-IntuneWin32Rule (hashtables with an '@odata.type').
+
+Requires the Microsoft.Graph.Authentication module and a connection made with
+Connect-MgGraph -Scopes DeviceManagementApps.ReadWrite.All.
 
 ## EXAMPLES
 
 ### EXAMPLE 1
 ```
-Publish-IntuneAppPackage -IntuneAppJSONPath "C:\Packages\MyApp.json" -IntuneWinPath "C:\Packages\MyApp.intunewin"
+Publish-IntuneAppPackage -IntuneAppJSONPath "C:\Packages\MyApp.1.0.json" -IntuneWinPath "C:\Packages\setup.intunewin"
 ```
 
-Publishes the MyApp application to Intune.
+Creates the MyApp Win32 app in Intune and uploads setup.intunewin.
 
 ### EXAMPLE 2
 ```
-Publish-IntuneAppPackage -IntuneAppJSONPath "C:\Packages\MyApp.json" -IntuneWinPath "C:\Packages\MyApp.intunewin" -Force
+Publish-IntuneAppPackage -IntuneAppJSONPath "C:\Packages\MyApp.1.1.json" -IntuneWinPath "C:\Packages\setup.intunewin" -Force -NoTenantDetails
 ```
 
-Publishes the MyApp application and overwrites if it already exists.
+Uploads setup.intunewin as a new content version of the existing MyApp app.
 
 ## PARAMETERS
 
 ### -IntuneAppJSONPath
-The full path to the Intune application configuration JSON file.
-The file must exist and be a valid file path.
+The path to the application configuration JSON file created by New-IntuneApplication.
 
 ```yaml
-Type: String
-Parameter Sets: (All)
+Type:String
+Parameter Sets:   (All)
 Aliases:
-
 Required: True
-Position: 1
+Position: 1Default
+Default value: None
 Default value: None
 Accept pipeline input: False
+input:False
+Accept pipeline input: False
+Accept wildcard characters: False
 Accept wildcard characters: False
 ```
 
 ### -IntuneWinPath
-The full path to the .intunewin package file.
-The file must exist and be a valid file path.
+The path to the .intunewin package file.
 
 ```yaml
-Type: String
-Parameter Sets: (All)
+Type:String
+Parameter Sets:   (All)
 Aliases:
-
 Required: True
-Position: 2
+Position: 2Default
+Default value: None
 Default value: None
 Accept pipeline input: False
+input:False
+Accept pipeline input: False
+Accept wildcard characters: False
 Accept wildcard characters: False
 ```
 
 ### -Force
-Switch to force update of an existing application in Intune.
-If not specified, the function will error if the application already exists.
+Upload the package as a new content version when an app with the same display name exists.
 
 ```yaml
-Type: SwitchParameter
-Parameter Sets: (All)
+Type:Switch
+Parameter Sets:   (All)
 Aliases:
-
 Required: False
-Position: Named
+Position:Named
+Default value: None
+Default value: None
 Default value: False
 Accept pipeline input: False
+input:False
+Accept pipeline input: False
+Accept wildcard characters: False
 Accept wildcard characters: False
 ```
 
 ### -NoTenantDetails
-Switch to suppress the display of tenant connection details.
+Do not show the tenant connection details.
 
 ```yaml
-Type: SwitchParameter
-Parameter Sets: (All)
+Type:Switch
+Parameter Sets:   (All)
 Aliases:
-
 Required: False
-Position: Named
+Position:Named
+Default value: None
+Default value: None
 Default value: False
 Accept pipeline input: False
+input:False
+Accept pipeline input: False
+Accept wildcard characters: False
+Accept wildcard characters: False
+```
+
+### -Rules
+Detection and requirement rules created with New-IntuneWin32Rule.
+Overrides the rules in the JSON file.
+
+```yaml
+Type: Hashtable[]
+Parameter Sets:   (All)
+Aliases:
+Required: False
+Position: 3Default
+Default value: None
+Default value: None
+Accept pipeline input: False
+input:False
+Accept pipeline input: False
+Accept wildcard characters: False
+Accept wildcard characters: False
+```
+
+### -PollIntervalSeconds
+How often to check the upload and commit state.
+Default is 5 seconds.
+
+```yaml
+Type:
+Int32
+Parameter Sets:   (All)
+Aliases:
+Required: False
+Position: 4Default
+Default value: None
+Default value: 5
+Accept pipeline input: False
+input:False
+Accept pipeline input: False
+Accept wildcard characters: False
+Accept wildcard characters: False
+```
+
+### -TimeoutSeconds
+How long to wait for each upload or commit state.
+Default is 600 seconds.
+
+```yaml
+Type:
+Int32
+Parameter Sets:   (All)
+Aliases:
+Required: False
+Position: 5Default
+Default value: None
+Default value: 600
+Accept pipeline input: False
+input:False
+Accept pipeline input: False
+Accept wildcard characters: False
+Accept wildcard characters: False
+```
+
+### -WhatIf
+Shows what would happen if the cmdlet runs.
+The cmdlet is not run.
+
+```yaml
+Type:Switch
+Parameter Sets:   (All)
+Aliases:wi
+Required: False
+Position:Named
+Default value: None
+Default value: None
+Default value: None
+Accept pipeline input: False
+input:False
+Accept pipeline input: False
+Accept wildcard characters: False
+Accept wildcard characters: False
+```
+
+### -Confirm
+Prompts you for confirmation before running the cmdlet.
+
+```yaml
+Type:Switch
+Parameter Sets:   (All)
+Aliases:cf
+Required: False
+Position:Named
+Default value: None
+Default value: None
+Default value: None
+Accept pipeline input: False
+input:False
+Accept pipeline input: False
+Accept wildcard characters: False
 Accept wildcard characters: False
 ```
 
@@ -108,14 +229,18 @@ Accept wildcard characters: False
 {{ Fill ProgressAction Description }}
 
 ```yaml
-Type: ActionPreference
-Parameter Sets: (All)
-Aliases: proga
-
+Type:ActionPreference
+Parameter Sets:   (All)
+Aliases:proga
 Required: False
-Position: Named
+Position:Named
+Default value: None
+Default value: None
 Default value: None
 Accept pipeline input: False
+input:False
+Accept pipeline input: False
+Accept wildcard characters: False
 Accept wildcard characters: False
 ```
 
@@ -126,9 +251,12 @@ This cmdlet supports the common parameters: -Debug, -ErrorAction, -ErrorVariable
 
 ## OUTPUTS
 
-### PSCustomObject containing information about the published application.
+### System.Management.Automation.PSCustomObject
+### The Win32 app (id, displayName and committedContentVersion).
 ## NOTES
 Requires connection to Microsoft Graph using Connect-MgGraph before running this function.
-Requires the Microsoft.Graph.Intune and Microsoft.Graph.Authentication modules.
 
 ## RELATED LINKS
+
+[New-IntuneWin32Application]()
+

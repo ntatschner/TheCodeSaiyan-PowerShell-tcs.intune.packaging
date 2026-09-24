@@ -14,18 +14,21 @@ Signs PowerShell script files with a PFX certificate.
 
 ```
 ConvertTo-SignedScript [-Path] <String[]> [-CertificateFile] <String> [-Password] <SecureString>
- [-ProgressAction <ActionPreference>] [<CommonParameters>]
+ [[-TimestampServer] <String>] [-ProgressAction <ActionPreference>] [-WhatIf] [-Confirm] [<CommonParameters>]
 ```
 
 ## DESCRIPTION
-The ConvertTo-SignedScript function signs PowerShell script files (.ps1, .psm1, .psd1) using a specified PFX certificate file.
-This function validates that the input files are PowerShell scripts and that the certificate file is valid before signing.
+The ConvertTo-SignedScript function signs PowerShell files (.ps1, .psm1, .psd1) with the code
+signing certificate in a PFX file, using Set-AuthenticodeSignature and a DigiCert timestamp.
+Each file is signed once; a file that fails is reported and the others are still signed.
+
+This function needs Windows (Set-AuthenticodeSignature is only available there).
 
 ## EXAMPLES
 
 ### EXAMPLE 1
 ```
-ConvertTo-SignedScript -Path "C:\Scripts\MyScript.ps1" -CertificateFile "C:\Certs\MyCert.pfx" -Password (ConvertTo-SecureString "MyPassword" -AsPlainText -Force)
+ConvertTo-SignedScript -Path "C:\Scripts\MyScript.ps1" -CertificateFile "C:\Certs\MyCert.pfx" -Password (Read-Host -AsSecureString -Prompt 'PFX password')
 ```
 
 Signs the specified PowerShell script with the provided certificate.
@@ -42,33 +45,38 @@ Signs all PowerShell scripts in the specified directory using pipeline input.
 ### -Path
 The path to one or more PowerShell script files to sign.
 Accepts pipeline input.
-Validates that files exist, have valid extensions (.ps1, .psm1, .psd1), and contain content.
+The files must exist, have a .ps1, .psm1 or .psd1 extension and not be empty.
 
 ```yaml
 Type: String[]
-Parameter Sets: (All)
-Aliases: FullName
-
+Parameter Sets:   (All)
+Aliases:FullName
 Required: True
-Position: 1
+Position: 1Default
 Default value: None
+Default value: None
+Accept pipeline input: False
+input:False
 Accept pipeline input: True (ByPropertyName, ByValue)
+Accept wildcard characters: False
 Accept wildcard characters: False
 ```
 
 ### -CertificateFile
 The path to the PFX certificate file used for signing.
-Must be a valid .pfx file that exists and contains data.
 
 ```yaml
-Type: String
-Parameter Sets: (All)
+Type:String
+Parameter Sets:   (All)
 Aliases:
-
 Required: True
-Position: 2
+Position: 2Default
+Default value: None
 Default value: None
 Accept pipeline input: False
+input:False
+Accept pipeline input: False
+Accept wildcard characters: False
 Accept wildcard characters: False
 ```
 
@@ -76,14 +84,75 @@ Accept wildcard characters: False
 The password for the PFX certificate file as a SecureString.
 
 ```yaml
-Type: SecureString
-Parameter Sets: (All)
+Type:SecureString
+Parameter Sets:   (All)
 Aliases:
-
 Required: True
-Position: 3
+Position: 3Default
+Default value: None
 Default value: None
 Accept pipeline input: False
+input:False
+Accept pipeline input: False
+Accept wildcard characters: False
+Accept wildcard characters: False
+```
+
+### -TimestampServer
+The URL of the timestamp server.
+Default is http://timestamp.digicert.com.
+
+```yaml
+Type:String
+Parameter Sets:   (All)
+Aliases:
+Required: False
+Position: 4Default
+Default value: None
+Default value: Http://timestamp.digicert.com
+Accept pipeline input: False
+input:False
+Accept pipeline input: False
+Accept wildcard characters: False
+Accept wildcard characters: False
+```
+
+### -WhatIf
+Shows what would happen if the cmdlet runs.
+The cmdlet is not run.
+
+```yaml
+Type:Switch
+Parameter Sets:   (All)
+Aliases:wi
+Required: False
+Position:Named
+Default value: None
+Default value: None
+Default value: None
+Accept pipeline input: False
+input:False
+Accept pipeline input: False
+Accept wildcard characters: False
+Accept wildcard characters: False
+```
+
+### -Confirm
+Prompts you for confirmation before running the cmdlet.
+
+```yaml
+Type:Switch
+Parameter Sets:   (All)
+Aliases:cf
+Required: False
+Position:Named
+Default value: None
+Default value: None
+Default value: None
+Accept pipeline input: False
+input:False
+Accept pipeline input: False
+Accept wildcard characters: False
 Accept wildcard characters: False
 ```
 
@@ -91,14 +160,18 @@ Accept wildcard characters: False
 {{ Fill ProgressAction Description }}
 
 ```yaml
-Type: ActionPreference
-Parameter Sets: (All)
-Aliases: proga
-
+Type:ActionPreference
+Parameter Sets:   (All)
+Aliases:proga
 Required: False
-Position: Named
+Position:Named
+Default value: None
+Default value: None
 Default value: None
 Accept pipeline input: False
+input:False
+Accept pipeline input: False
+Accept wildcard characters: False
 Accept wildcard characters: False
 ```
 
@@ -109,6 +182,8 @@ This cmdlet supports the common parameters: -Debug, -ErrorAction, -ErrorVariable
 
 ## OUTPUTS
 
+### System.Management.Automation.Signature
+### The signature result for each file, as returned by Set-AuthenticodeSignature.
 ## NOTES
 The certificate must be valid for code signing and trusted on the system where the scripts will run.
 
