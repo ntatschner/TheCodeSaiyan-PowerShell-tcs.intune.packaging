@@ -217,7 +217,8 @@ function New-APFDeployment {
                     Write-Output "The application '$Name' was also packaged to an intunewin file.`nThis can be found at '$($Package.FullName)'."
                 }
             }
-            Write-Output "When publishing the application to Intune, use`n'powershell.exe -ExecutionPolicy RemoteSigned -File Intune-I-MainInstaller.ps1' for the install Command and`n'powershell.exe -ExecutionPolicy RemoteSigned -File Intune-I-MainInstaller.ps1 -Uninstall' for the Uninstall Command."
+            $CommandLine = Get-APFCommandLine
+            Write-Output "When publishing the application to Intune, use`n'$($CommandLine.InstallCommand)' for the install command and`n'$($CommandLine.UninstallCommand)' for the uninstall command."
             Invoke-TelemetryCollection @TelemetryArgs -Stage End
         }
         catch {

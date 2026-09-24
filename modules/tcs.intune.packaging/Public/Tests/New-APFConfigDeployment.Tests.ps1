@@ -177,6 +177,7 @@ Describe 'New-APFConfigDeployment' {
                 $PackageName -eq 'WinPkg'
             }
             $output -join "`n" | Should -Match 'WinPkg\.intunewin'
+            $output -join "`n" | Should -Match ([regex]::Escape('%windir%\sysnative\WindowsPowerShell\v1.0\powershell.exe'))
         }
     }
 

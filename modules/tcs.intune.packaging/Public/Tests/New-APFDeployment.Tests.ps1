@@ -33,6 +33,9 @@ Describe 'New-APFDeployment' {
         $detection | Should -Match "\`$AppName = 'My App'"
         $detection | Should -Match "\`$Version = '1\.2\.3\.4'"
         $output -join "`n" | Should -Match 'successfully packaged'
+        # The Intune Management Extension is 32-bit: the command must start the 64-bit Windows PowerShell
+        $output -join "`n" | Should -Match ([regex]::Escape("'%windir%\sysnative\WindowsPowerShell\v1.0\powershell.exe -NoProfile -ExecutionPolicy RemoteSigned -WindowStyle Hidden -File Intune-I-MainInstaller.ps1' for the install command"))
+        $output -join "`n" | Should -Match ([regex]::Escape('Intune-I-MainInstaller.ps1 -Uninstall'))
     }
 
     It 'Uses the file name as the default application name for EXE installers' {

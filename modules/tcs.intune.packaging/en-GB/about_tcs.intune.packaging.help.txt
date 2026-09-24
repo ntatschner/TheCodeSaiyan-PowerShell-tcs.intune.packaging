@@ -16,11 +16,17 @@ LONG DESCRIPTION
     need the Microsoft.Entra or Microsoft.Graph.Authentication modules.
 
     APF packages are built from the installer scripts in the module's
-    Public/Templates folder. Each package contains Intune-I-MainInstaller.ps1
-    (install command: powershell.exe -ExecutionPolicy RemoteSigned -File
-    Intune-I-MainInstaller.ps1, uninstall: the same with -Uninstall),
+    Public/Templates folder. Each package contains Intune-I-MainInstaller.ps1,
     optional pre- and post-install scripts, config.installer.json and a
-    detection script.
+    detection script. Install command:
+
+        %windir%\sysnative\WindowsPowerShell\v1.0\powershell.exe -NoProfile
+        -ExecutionPolicy RemoteSigned -WindowStyle Hidden
+        -File Intune-I-MainInstaller.ps1
+
+    Uninstall command: the same with -Uninstall. The Intune Management
+    Extension is a 32-bit process; sysnative starts the 64-bit Windows
+    PowerShell.
 
     IntuneWinAppUtil.exe is kept per user in
     %LOCALAPPDATA%\tcs.intune.packaging.
