@@ -1,14 +1,17 @@
-function ConvertTo-SignedScript {
+function Set-ScriptSignature {
     <#
     .SYNOPSIS
         Signs PowerShell script files with a PFX certificate.
 
     .DESCRIPTION
-        The ConvertTo-SignedScript function signs PowerShell files (.ps1, .psm1, .psd1) with the code
+        The Set-ScriptSignature function signs PowerShell files (.ps1, .psm1, .psd1) with the code
         signing certificate in a PFX file, using Set-AuthenticodeSignature and a DigiCert timestamp.
         Each file is signed once; a file that fails is reported and the others are still signed.
 
         This function needs Windows (Set-AuthenticodeSignature is only available there).
+
+        Set-ScriptSignature was called ConvertTo-SignedScript before version 0.5.0; that name is kept as
+        an alias.
 
     .PARAMETER Path
         The path to one or more PowerShell script files to sign. Accepts pipeline input.
@@ -28,12 +31,12 @@ function ConvertTo-SignedScript {
         The signature result for each file, as returned by Set-AuthenticodeSignature.
 
     .EXAMPLE
-        ConvertTo-SignedScript -Path "C:\Scripts\MyScript.ps1" -CertificateFile "C:\Certs\MyCert.pfx" -Password (Read-Host -AsSecureString -Prompt 'PFX password')
+        Set-ScriptSignature -Path "C:\Scripts\MyScript.ps1" -CertificateFile "C:\Certs\MyCert.pfx" -Password (Read-Host -AsSecureString -Prompt 'PFX password')
 
         Signs the specified PowerShell script with the provided certificate.
 
     .EXAMPLE
-        Get-ChildItem -Path "C:\Scripts\*.ps1" | ConvertTo-SignedScript -CertificateFile "C:\Certs\MyCert.pfx" -Password $securePass
+        Get-ChildItem -Path "C:\Scripts\*.ps1" | Set-ScriptSignature -CertificateFile "C:\Certs\MyCert.pfx" -Password $securePass
 
         Signs all PowerShell scripts in the specified directory using pipeline input.
 
@@ -98,7 +101,7 @@ function ConvertTo-SignedScript {
         $TelemetryFailed = $false
         try {
             if (-not (Get-Command -Name 'Set-AuthenticodeSignature' -ErrorAction SilentlyContinue)) {
-                throw 'Set-AuthenticodeSignature is not available. ConvertTo-SignedScript needs Windows.'
+                throw 'Set-AuthenticodeSignature is not available. Set-ScriptSignature needs Windows.'
             }
             try {
                 # Get-PfxCertificate -Password does not exist in Windows PowerShell 5.1, so load the PFX directly

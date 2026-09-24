@@ -9,6 +9,10 @@ function New-PackageJSON {
         items in the source directory) to "package-<PackageName>-v<Version>.json" in the source directory.
         An existing metadata file with the same name is overwritten and is not listed in AllFiles.
 
+        Deprecated: no other command in this module reads this file (Publish-IntuneAppPackage reads the
+        JSON written by New-IntuneApplication), and New-PackageJSON may be removed in a future version.
+        A deprecation warning is written each time it runs.
+
     .PARAMETER PackageName
         The name of the application package.
 
@@ -78,6 +82,7 @@ function New-PackageJSON {
     }
     Invoke-TelemetryCollection @TelemetryArgs -Stage Start -ClearTimer
     try {
+        Write-Warning 'New-PackageJSON is deprecated and may be removed in a future version: no command in tcs.intune.packaging reads its output. Use New-IntuneApplication to write the JSON that Publish-IntuneAppPackage reads.'
         $JSONFileName = "package-$($PackageName)-v$($Version).json"
         $PackageJSONPath = Join-Path -Path $SourceDirectory -ChildPath $JSONFileName
         $AllFiles = @(Get-ChildItem -Path $SourceDirectory -Recurse | Where-Object { $_.Name -ne $JSONFileName } | ForEach-Object { $_.Name })
