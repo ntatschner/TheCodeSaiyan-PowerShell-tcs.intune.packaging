@@ -76,6 +76,42 @@ Describe 'New-ApplicationDeploymentGroup' {
             Should -Invoke -ModuleName tcs.intune.packaging Add-MgDirectoryAdministrativeUnitMember -Times 4 -Exactly -ParameterFilter { $AdministrativeUnitId -eq 'au-1' }
         }
 
+        It 'Returns the created and existing groups as objects' {
+            Mock -ModuleName tcs.intune.packaging Get-EntraGroup { [PSCustomObject]@{ Id = 'existing' } } -ParameterFilter { $Filter -like "*-Available'" }
+            $groups = @(New-ApplicationDeploymentGroup -ApplicationName 'App' -CreateGroups -Confirm:$false)
+            $groups.Count | Should -Be 4
+            $groups | ForEach-Object { $_ | Should -BeOfType ([PSCustomObject]) }
+            ($groups | Where-Object GroupName -EQ 'Intune-AG-App-Available').Status | Should -Be 'Exists'
+            ($groups | Where-Object GroupName -EQ 'Intune-AG-App-Available').Id | Should -Be 'existing'
+            ($groups | Where-Object GroupName -EQ 'Intune-App-App-Test').Status | Should -Be 'Created'
+            ($groups | Where-Object GroupName -EQ 'Intune-App-App-Test').Id | Should -Be 'id-Intune-App-App-Test'
+            @($groups | Where-Object { $_ -is [string] }).Count | Should -Be 0
+        }
+
+        It 'Does not create a group whose lookup failed and writes an error' {
+            Mock -ModuleName tcs.intune.packaging Get-EntraGroup { throw 'Forbidden' } -ParameterFilter { $Filter -like "*-Required'" }
+            $groups = @(New-ApplicationDeploymentGroup -ApplicationName 'App' -CreateGroups -Confirm:$false -ErrorVariable groupError -ErrorAction SilentlyContinue)
+            Should -Invoke -ModuleName tcs.intune.packaging New-EntraGroup -Times 3 -Exactly
+            Should -Invoke -ModuleName tcs.intune.packaging New-EntraGroup -Times 0 -Exactly -ParameterFilter { $DisplayName -eq 'Intune-AG-App-Required' }
+            "$groupError" | Should -Match 'Intune-AG-App-Required.*Forbidden'
+            $groups.GroupName | Should -Not -Contain 'Intune-AG-App-Required'
+        }
+
+        It 'Writes an error when a member cannot be added' {
+            Mock -ModuleName tcs.intune.packaging Add-EntraGroupMember { throw 'no such user' }
+            $null = New-ApplicationDeploymentGroup -ApplicationName 'App' -CreateGroups -TestMembers 'user-1' -Confirm:$false -ErrorVariable groupError -ErrorAction SilentlyContinue -WarningVariable groupWarning
+            "$groupError" | Should -Match 'user-1.*no such user'
+            $groupWarning | Should -BeNullOrEmpty
+        }
+
+        It 'Reports a failed End to telemetry when a group failed' {
+            Mock -ModuleName tcs.intune.packaging Invoke-TelemetryCollection { }
+            Mock -ModuleName tcs.intune.packaging New-EntraGroup { throw 'quota' }
+            $null = New-ApplicationDeploymentGroup -ApplicationName 'App' -CreateGroups -Confirm:$false -ErrorAction SilentlyContinue
+            Should -Invoke -ModuleName tcs.intune.packaging Invoke-TelemetryCollection -Times 1 -Exactly -ParameterFilter { $Stage -eq 'End' -and $Failed -eq $true }
+            Should -Invoke -ModuleName tcs.intune.packaging Invoke-TelemetryCollection -Times 0 -Exactly -ParameterFilter { $Stage -eq 'End' -and -not $Failed }
+        }
+
         It 'Creates nothing with -WhatIf' {
             $null = New-ApplicationDeploymentGroup -ApplicationName 'App' -CreateGroups -WhatIf
             Should -Invoke -ModuleName tcs.intune.packaging New-EntraGroup -Times 0 -Exactly

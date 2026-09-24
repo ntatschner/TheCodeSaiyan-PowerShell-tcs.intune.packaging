@@ -11,6 +11,9 @@ function New-ApplicationDeploymentGroup {
 
         By default the group list is returned. With -CreateGroups the groups are created in Entra ID
         (existing groups are skipped), optionally added to an administrative unit and given members.
+        A group whose existence cannot be checked (for example because the lookup fails) is not
+        created. Every failure for a group (lookup, creation, administrative unit, member) is written
+        as a non-terminating error and the other groups are still processed.
         With -CreateFile the list is also exported to Application-Groups.csv in Destination.
 
         Creating groups needs the Microsoft.Entra module (Get-EntraGroup, New-EntraGroup,
@@ -48,7 +51,9 @@ function New-ApplicationDeploymentGroup {
 
     .OUTPUTS
         System.Management.Automation.PSCustomObject
-        One object per group (Name, GroupName, GroupDescription) when -CreateGroups is not used.
+        Without -CreateGroups: one object per group with Name, GroupName and GroupDescription.
+        With -CreateGroups: one object per created or existing group with Name, GroupName,
+        GroupDescription, Id and Status ('Created' or 'Exists'). Groups that failed are not returned.
 
     .EXAMPLE
         New-ApplicationDeploymentGroup -ApplicationName "Microsoft 365 Apps"
@@ -109,6 +114,8 @@ function New-ApplicationDeploymentGroup {
         }
         Invoke-TelemetryCollection @TelemetryArgs -Stage Start -ClearTimer
         $TelemetryFailed = $false
+        # The last per-group error; reported to telemetry as a failure at the end
+        $GroupError = $null
         try {
             # Capitalise each word in the application name and remove the spaces
             $textInfo = [System.Globalization.CultureInfo]::CurrentCulture.TextInfo
@@ -154,37 +161,47 @@ function New-ApplicationDeploymentGroup {
             if ($CreateGroups) {
                 foreach ($Group in $GroupList) {
                     $GroupName = $Group.GroupName
-                    # Test if the group exists first
+                    # A failed lookup is not the same as "not found": do not create a possible duplicate
                     try {
-                        $GroupExists = Get-EntraGroup -Filter "displayName eq '$($GroupName.Replace("'", "''"))'" -ErrorAction Stop
+                        $ExistingGroup = @(Get-EntraGroup -Filter "displayName eq '$($GroupName.Replace("'", "''"))'" -ErrorAction Stop | Where-Object { $_ })
                     }
                     catch {
-                        Write-Verbose "Could not look up group '$GroupName': $($_.Exception.Message)"
-                        $GroupExists = $null
+                        $GroupError = $_
+                        Write-Error -Message "Could not check whether the group '$GroupName' exists, so it was not created: $($_.Exception.Message)" -Exception $_.Exception -TargetObject $GroupName
+                        continue
                     }
-                    if ($GroupExists) {
-                        Write-Output "Group $GroupName already exists in Entra, skipping."
+                    if ($ExistingGroup.Count -gt 0) {
+                        Write-Verbose "Group $GroupName already exists in Entra ID, skipping."
+                        [PSCustomObject]@{
+                            Name             = $Group.Name
+                            GroupName        = $GroupName
+                            GroupDescription = $Group.GroupDescription
+                            Id               = $ExistingGroup[0].Id
+                            Status           = 'Exists'
+                        }
                         continue
                     }
                     if (-not $PSCmdlet.ShouldProcess($GroupName, 'Create Entra ID security group')) {
                         continue
                     }
-                    Write-Output "Creating group $GroupName in Entra"
+                    Write-Verbose "Creating group $GroupName in Entra ID."
                     try {
                         $newGroup = New-EntraGroup -DisplayName $GroupName -MailEnabled $false -SecurityEnabled $true -MailNickname $GroupName -Description $Group.GroupDescription -ErrorAction Stop
                     }
                     catch {
-                        Write-Error "Failed to create group $GroupName. Error: $_"
+                        $GroupError = $_
+                        Write-Error -Message "Failed to create group ${GroupName}: $($_.Exception.Message)" -Exception $_.Exception -TargetObject $GroupName
                         continue
                     }
                     # Assign to the administrative unit if specified
                     if ($AdminUnitId) {
                         try {
                             Add-MgDirectoryAdministrativeUnitMember -AdministrativeUnitId $AdminUnitId -DirectoryObjectId $newGroup.Id -ErrorAction Stop
-                            Write-Output "Assigned group $($newGroup.Id) to Admin Unit $AdminUnitId"
+                            Write-Verbose "Assigned group $($newGroup.Id) to administrative unit $AdminUnitId."
                         }
                         catch {
-                            Write-Warning "Failed to assign group $($newGroup.Id) to Admin Unit ${AdminUnitId}: $_"
+                            $GroupError = $_
+                            Write-Error -Message "Failed to assign group $GroupName ($($newGroup.Id)) to administrative unit ${AdminUnitId}: $($_.Exception.Message)" -Exception $_.Exception -TargetObject $GroupName
                         }
                     }
                     # Add group members based on the group type (the last part of the group name)
@@ -192,11 +209,19 @@ function New-ApplicationDeploymentGroup {
                     foreach ($member in @($MembersBySuffix[$Suffix] | Where-Object { $_ })) {
                         try {
                             Add-EntraGroupMember -GroupId $newGroup.Id -MemberId $member -ErrorAction Stop
-                            Write-Output "Added member $member to group $GroupName"
+                            Write-Verbose "Added member $member to group $GroupName."
                         }
                         catch {
-                            Write-Warning "Failed to add member $member to group ${GroupName}: $_"
+                            $GroupError = $_
+                            Write-Error -Message "Failed to add member $member to group ${GroupName}: $($_.Exception.Message)" -Exception $_.Exception -TargetObject $GroupName
                         }
+                    }
+                    [PSCustomObject]@{
+                        Name             = $Group.Name
+                        GroupName        = $GroupName
+                        GroupDescription = $Group.GroupDescription
+                        Id               = $newGroup.Id
+                        Status           = 'Created'
                     }
                 }
             }
@@ -220,7 +245,12 @@ function New-ApplicationDeploymentGroup {
     }
     end {
         if (-not $TelemetryFailed) {
-            Invoke-TelemetryCollection @TelemetryArgs -Stage End
+            if ($GroupError) {
+                Invoke-TelemetryCollection @TelemetryArgs -Stage End -Failed $true -Exception $GroupError
+            }
+            else {
+                Invoke-TelemetryCollection @TelemetryArgs -Stage End
+            }
         }
     }
 }
