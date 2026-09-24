@@ -158,116 +158,140 @@ function New-IntuneWin32Rule {
         }
         return $paramDictionary
     }
+    begin {
+        $TelemetryArgs = @{
+            ModuleName    = $MyInvocation.MyCommand.Module.Name
+            ModuleVersion = [string]$MyInvocation.MyCommand.Module.Version
+            CommandName   = $MyInvocation.MyCommand.Name
+            ExecutionID   = [guid]::NewGuid().ToString()
+        }
+        Invoke-TelemetryCollection @TelemetryArgs -Stage Start -ClearTimer
+        $TelemetryFailed = $false
+    }
     process {
-        # Builds the rule types documented at
-        # https://learn.microsoft.com/graph/api/resources/intune-apps-win32lobapprule
-        # Dynamic parameters are not created as variables, so read them from PSBoundParameters
-        $Bound = $PSBoundParameters
-        $Operator = $(if ($Bound.ContainsKey('Operator')) { $Bound['Operator'] } else { 'notConfigured' })
-        $Rule = [ordered]@{}
-        switch ($RuleType) {
-            'FileOrFolder' {
-                $Rule['@odata.type'] = '#microsoft.graph.win32LobAppFileSystemRule'
-                $Rule['ruleType'] = $RuleParentType
-                $Rule['path'] = $Bound['Path']
-                $Rule['fileOrFolderName'] = $Bound['FileOrFolderName']
-                $Rule['check32BitOn64System'] = [bool]$Bound['Check32BitOn64BitSystem']
-                $Rule['operationType'] = $Bound['OperationType']
-                $Rule['operator'] = $Operator
-                if ($Bound.ContainsKey('ComparisonValue')) {
-                    $Rule['comparisonValue'] = $Bound['ComparisonValue']
-                }
-            }
-            'Registry' {
-                $KeyPath = [string]$Bound['Path']
-                if ($Bound['KeyName']) {
-                    $KeyPath = $KeyPath.TrimEnd('\') + '\' + $Bound['KeyName']
-                }
-                $Rule['@odata.type'] = '#microsoft.graph.win32LobAppRegistryRule'
-                $Rule['ruleType'] = $RuleParentType
-                $Rule['check32BitOn64System'] = [bool]$Bound['Check32BitOn64BitSystem']
-                $Rule['keyPath'] = $KeyPath
-                $Rule['valueName'] = [string]$Bound['ValueName']
-                switch ($Operator) {
-                    'exists' {
-                        $Rule['operationType'] = 'exists'
-                        $Rule['operator'] = 'notConfigured'
-                    }
-                    'notExists' {
-                        $Rule['operationType'] = 'doesNotExist'
-                        $Rule['operator'] = 'notConfigured'
-                    }
-                    'notConfigured' {
-                        # Without an operator the rule checks that the key or value exists
-                        $Rule['operationType'] = 'exists'
-                        $Rule['operator'] = 'notConfigured'
-                    }
-                    default {
-                        if (-not $Bound.ContainsKey('DataType')) {
-                            throw "A registry comparison ($Operator) needs -DataType (string, integer or version)."
-                        }
-                        $Rule['operationType'] = $Bound['DataType']
-                        $Rule['operator'] = $Operator
-                        $Rule['comparisonValue'] = [string]$Bound['Value']
-                    }
-                }
-            }
-            'Script' {
-                $ScriptPath = $Bound['ScriptPath']
-                try {
-                    $ScriptContent = Get-Content -Path $ScriptPath -Raw -ErrorAction Stop
-                }
-                catch {
-                    throw "Failed to read script content from $($ScriptPath): $($_.Exception.Message)"
-                }
-                $Rule['@odata.type'] = '#microsoft.graph.win32LobAppPowerShellScriptRule'
-                $Rule['ruleType'] = $RuleParentType
-                $Rule['enforceSignatureCheck'] = [bool]$Bound['EnforceSignatureCheck']
-                $Rule['runAs32Bit'] = [bool]$Bound['RunAs32Bit']
-                $Rule['scriptContent'] = [System.Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes($ScriptContent))
-                if ($RuleParentType -eq 'detection') {
-                    # Detection scripts must not set displayName, runAsAccount or a comparison
-                    $Rule['operationType'] = 'notConfigured'
-                    $Rule['operator'] = 'notConfigured'
-                }
-                else {
-                    $Rule['displayName'] = $(if ($Bound['DisplayName']) { $Bound['DisplayName'] } else { Split-Path -Path $ScriptPath -Leaf })
-                    $Rule['runAsAccount'] = $Bound['RunAsAccount']
-                    $Rule['operationType'] = $(if ($Bound.ContainsKey('OperationType')) { $Bound['OperationType'] } else { 'notConfigured' })
+        try {
+            # Builds the rule types documented at
+            # https://learn.microsoft.com/graph/api/resources/intune-apps-win32lobapprule
+            # Dynamic parameters are not created as variables, so read them from PSBoundParameters
+            $Bound = $PSBoundParameters
+            $Operator = $(if ($Bound.ContainsKey('Operator')) { $Bound['Operator'] } else { 'notConfigured' })
+            $Rule = [ordered]@{}
+            switch ($RuleType) {
+                'FileOrFolder' {
+                    $Rule['@odata.type'] = '#microsoft.graph.win32LobAppFileSystemRule'
+                    $Rule['ruleType'] = $RuleParentType
+                    $Rule['path'] = $Bound['Path']
+                    $Rule['fileOrFolderName'] = $Bound['FileOrFolderName']
+                    $Rule['check32BitOn64System'] = [bool]$Bound['Check32BitOn64BitSystem']
+                    $Rule['operationType'] = $Bound['OperationType']
                     $Rule['operator'] = $Operator
                     if ($Bound.ContainsKey('ComparisonValue')) {
                         $Rule['comparisonValue'] = $Bound['ComparisonValue']
                     }
                 }
+                'Registry' {
+                    $KeyPath = [string]$Bound['Path']
+                    if ($Bound['KeyName']) {
+                        $KeyPath = $KeyPath.TrimEnd('\') + '\' + $Bound['KeyName']
+                    }
+                    $Rule['@odata.type'] = '#microsoft.graph.win32LobAppRegistryRule'
+                    $Rule['ruleType'] = $RuleParentType
+                    $Rule['check32BitOn64System'] = [bool]$Bound['Check32BitOn64BitSystem']
+                    $Rule['keyPath'] = $KeyPath
+                    $Rule['valueName'] = [string]$Bound['ValueName']
+                    switch ($Operator) {
+                        'exists' {
+                            $Rule['operationType'] = 'exists'
+                            $Rule['operator'] = 'notConfigured'
+                        }
+                        'notExists' {
+                            $Rule['operationType'] = 'doesNotExist'
+                            $Rule['operator'] = 'notConfigured'
+                        }
+                        'notConfigured' {
+                            # Without an operator the rule checks that the key or value exists
+                            $Rule['operationType'] = 'exists'
+                            $Rule['operator'] = 'notConfigured'
+                        }
+                        default {
+                            if (-not $Bound.ContainsKey('DataType')) {
+                                throw "A registry comparison ($Operator) needs -DataType (string, integer or version)."
+                            }
+                            $Rule['operationType'] = $Bound['DataType']
+                            $Rule['operator'] = $Operator
+                            $Rule['comparisonValue'] = [string]$Bound['Value']
+                        }
+                    }
+                }
+                'Script' {
+                    $ScriptPath = $Bound['ScriptPath']
+                    try {
+                        $ScriptContent = Get-Content -Path $ScriptPath -Raw -ErrorAction Stop
+                    }
+                    catch {
+                        throw "Failed to read script content from $($ScriptPath): $($_.Exception.Message)"
+                    }
+                    $Rule['@odata.type'] = '#microsoft.graph.win32LobAppPowerShellScriptRule'
+                    $Rule['ruleType'] = $RuleParentType
+                    $Rule['enforceSignatureCheck'] = [bool]$Bound['EnforceSignatureCheck']
+                    $Rule['runAs32Bit'] = [bool]$Bound['RunAs32Bit']
+                    $Rule['scriptContent'] = [System.Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes($ScriptContent))
+                    if ($RuleParentType -eq 'detection') {
+                        # Detection scripts must not set displayName, runAsAccount or a comparison
+                        $Rule['operationType'] = 'notConfigured'
+                        $Rule['operator'] = 'notConfigured'
+                    }
+                    else {
+                        $Rule['displayName'] = $(if ($Bound['DisplayName']) { $Bound['DisplayName'] } else { Split-Path -Path $ScriptPath -Leaf })
+                        $Rule['runAsAccount'] = $Bound['RunAsAccount']
+                        $Rule['operationType'] = $(if ($Bound.ContainsKey('OperationType')) { $Bound['OperationType'] } else { 'notConfigured' })
+                        $Rule['operator'] = $Operator
+                        if ($Bound.ContainsKey('ComparisonValue')) {
+                            $Rule['comparisonValue'] = $Bound['ComparisonValue']
+                        }
+                    }
+                }
+                'MSI' {
+                    if ($RuleParentType -ne 'detection') {
+                        throw 'MSI (product code) rules can only be used as detection rules.'
+                    }
+                    $ProductCode = $Bound['ProductCode']
+                    $ProductVersion = $Bound['ProductVersion']
+                    $VersionOperator = $(if ($Bound.ContainsKey('ProductVersionOperator')) { $Bound['ProductVersionOperator'] } else { 'notConfigured' })
+                    if ($Bound['AutoDetect'] -eq $true) {
+                        $MSIInfo = Get-MSIProperty -Path $Bound['MSIPath'] -ErrorAction Stop
+                        $ProductCode = $MSIInfo.ProductCode
+                        $ProductVersion = $MSIInfo.ProductVersion
+                        $VersionOperator = 'equal'
+                    }
+                    if ([string]::IsNullOrEmpty($ProductCode)) {
+                        throw 'An MSI rule needs -ProductCode or -AutoDetect $true.'
+                    }
+                    $Rule['@odata.type'] = '#microsoft.graph.win32LobAppProductCodeRule'
+                    $Rule['ruleType'] = $RuleParentType
+                    $Rule['productCode'] = $ProductCode
+                    $Rule['productVersionOperator'] = $VersionOperator
+                    $Rule['productVersion'] = $ProductVersion
+                }
             }
-            'MSI' {
-                if ($RuleParentType -ne 'detection') {
-                    throw 'MSI (product code) rules can only be used as detection rules.'
-                }
-                $ProductCode = $Bound['ProductCode']
-                $ProductVersion = $Bound['ProductVersion']
-                $VersionOperator = $(if ($Bound.ContainsKey('ProductVersionOperator')) { $Bound['ProductVersionOperator'] } else { 'notConfigured' })
-                if ($Bound['AutoDetect'] -eq $true) {
-                    $MSIInfo = Get-MSIProperty -Path $Bound['MSIPath'] -ErrorAction Stop
-                    $ProductCode = $MSIInfo.ProductCode
-                    $ProductVersion = $MSIInfo.ProductVersion
-                    $VersionOperator = 'equal'
-                }
-                if ([string]::IsNullOrEmpty($ProductCode)) {
-                    throw 'An MSI rule needs -ProductCode or -AutoDetect $true.'
-                }
-                $Rule['@odata.type'] = '#microsoft.graph.win32LobAppProductCodeRule'
-                $Rule['ruleType'] = $RuleParentType
-                $Rule['productCode'] = $ProductCode
-                $Rule['productVersionOperator'] = $VersionOperator
-                $Rule['productVersion'] = $ProductVersion
+            # Return a plain hashtable (the documented output type) with the keys in a stable order
+            $Result = @{}
+            foreach ($Key in $Rule.Keys) {
+                $Result[$Key] = $Rule[$Key]
             }
+            $Result
         }
-        # Return a plain hashtable (the documented output type) with the keys in a stable order
-        $Result = @{}
-        foreach ($Key in $Rule.Keys) {
-            $Result[$Key] = $Rule[$Key]
+        catch {
+            if (-not $TelemetryFailed) {
+                $TelemetryFailed = $true
+                Invoke-TelemetryCollection @TelemetryArgs -Stage End -Failed $true -Exception $_
+            }
+            throw
         }
-        $Result
+    }
+    end {
+        if (-not $TelemetryFailed) {
+            Invoke-TelemetryCollection @TelemetryArgs -Stage End
+        }
     }
 }

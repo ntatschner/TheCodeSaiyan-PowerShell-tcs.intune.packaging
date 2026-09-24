@@ -88,32 +88,61 @@ function ConvertTo-SignedScript {
         $TimestampServer = 'http://timestamp.digicert.com'
     )
     begin {
-        if (-not (Get-Command -Name 'Set-AuthenticodeSignature' -ErrorAction SilentlyContinue)) {
-            throw 'Set-AuthenticodeSignature is not available. ConvertTo-SignedScript needs Windows.'
+        $TelemetryArgs = @{
+            ModuleName    = $MyInvocation.MyCommand.Module.Name
+            ModuleVersion = [string]$MyInvocation.MyCommand.Module.Version
+            CommandName   = $MyInvocation.MyCommand.Name
+            ExecutionID   = [guid]::NewGuid().ToString()
         }
+        Invoke-TelemetryCollection @TelemetryArgs -Stage Start -ClearTimer
+        $TelemetryFailed = $false
         try {
-            # Get-PfxCertificate -Password does not exist in Windows PowerShell 5.1, so load the PFX directly
-            $CertificateFullPath = (Resolve-Path -Path $CertificateFile -ErrorAction Stop).ProviderPath
-            $CertificateObject = New-Object -TypeName System.Security.Cryptography.X509Certificates.X509Certificate2 -ArgumentList $CertificateFullPath, $Password
+            if (-not (Get-Command -Name 'Set-AuthenticodeSignature' -ErrorAction SilentlyContinue)) {
+                throw 'Set-AuthenticodeSignature is not available. ConvertTo-SignedScript needs Windows.'
+            }
+            try {
+                # Get-PfxCertificate -Password does not exist in Windows PowerShell 5.1, so load the PFX directly
+                $CertificateFullPath = (Resolve-Path -Path $CertificateFile -ErrorAction Stop).ProviderPath
+                $CertificateObject = New-Object -TypeName System.Security.Cryptography.X509Certificates.X509Certificate2 -ArgumentList $CertificateFullPath, $Password
+            }
+            catch {
+                throw "Failed to load certificate '$CertificateFile': $($_.Exception.Message)"
+            }
+            if (-not $CertificateObject.HasPrivateKey) {
+                throw "The certificate in '$CertificateFile' has no private key and cannot be used for signing."
+            }
         }
         catch {
-            throw "Failed to load certificate '$CertificateFile': $($_.Exception.Message)"
-        }
-        if (-not $CertificateObject.HasPrivateKey) {
-            throw "The certificate in '$CertificateFile' has no private key and cannot be used for signing."
+            $TelemetryFailed = $true
+            Invoke-TelemetryCollection @TelemetryArgs -Stage End -Failed $true -Exception $_
+            throw
         }
     }
     process {
-        foreach ($Script in $Path) {
-            if (-not $PSCmdlet.ShouldProcess($Script, 'Sign script')) {
-                continue
+        try {
+            foreach ($Script in $Path) {
+                if (-not $PSCmdlet.ShouldProcess($Script, 'Sign script')) {
+                    continue
+                }
+                try {
+                    Set-AuthenticodeSignature -Certificate $CertificateObject -TimestampServer $TimestampServer -FilePath $Script -ErrorAction Stop
+                }
+                catch {
+                    Write-Error -Message "Failed to sign script '$Script': $($_.Exception.Message)"
+                }
             }
-            try {
-                Set-AuthenticodeSignature -Certificate $CertificateObject -TimestampServer $TimestampServer -FilePath $Script -ErrorAction Stop
+        }
+        catch {
+            if (-not $TelemetryFailed) {
+                $TelemetryFailed = $true
+                Invoke-TelemetryCollection @TelemetryArgs -Stage End -Failed $true -Exception $_
             }
-            catch {
-                Write-Error -Message "Failed to sign script '$Script': $($_.Exception.Message)"
-            }
+            throw
+        }
+    }
+    end {
+        if (-not $TelemetryFailed) {
+            Invoke-TelemetryCollection @TelemetryArgs -Stage End
         }
     }
 }

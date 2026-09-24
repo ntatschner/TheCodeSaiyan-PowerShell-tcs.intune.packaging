@@ -39,4 +39,31 @@ Describe 'Start-DownloadFile' {
         Start-DownloadFile -URL 'https://example.invalid/a.zip' -Path $TestDrive -Name 'b.zip' -WhatIf
         Should -Invoke -ModuleName tcs.intune.packaging Invoke-WebRequest -Times 0 -Exactly
     }
+
+    Context 'Telemetry' {
+        BeforeEach {
+            Mock -ModuleName tcs.intune.packaging Invoke-TelemetryCollection { }
+        }
+
+        It 'Reports Start and a successful End' {
+            Mock -ModuleName tcs.intune.packaging Invoke-WebRequest { Set-Content -Path $OutFile -Value 'data' }
+            Start-DownloadFile -URL 'https://example.invalid/c.zip' -Path $TestDrive -Name 'c.zip'
+            Should -Invoke -ModuleName tcs.intune.packaging Invoke-TelemetryCollection -Times 1 -Exactly -ParameterFilter { $Stage -eq 'Start' -and $CommandName -eq 'Start-DownloadFile' }
+            Should -Invoke -ModuleName tcs.intune.packaging Invoke-TelemetryCollection -Times 1 -Exactly -ParameterFilter { $Stage -eq 'End' -and -not $Failed }
+        }
+
+        It 'Still reports End with -WhatIf' {
+            Mock -ModuleName tcs.intune.packaging Invoke-WebRequest { }
+            Start-DownloadFile -URL 'https://example.invalid/d.zip' -Path $TestDrive -Name 'd.zip' -WhatIf
+            Should -Invoke -ModuleName tcs.intune.packaging Invoke-WebRequest -Times 0 -Exactly
+            Should -Invoke -ModuleName tcs.intune.packaging Invoke-TelemetryCollection -Times 1 -Exactly -ParameterFilter { $Stage -eq 'End' -and -not $Failed }
+        }
+
+        It 'Reports a failed End when the download fails and still throws' {
+            Mock -ModuleName tcs.intune.packaging Invoke-WebRequest { throw 'network down' }
+            { Start-DownloadFile -URL 'https://example.invalid/e.zip' -Path $TestDrive -Name 'e.zip' } | Should -Throw '*network down*'
+            Should -Invoke -ModuleName tcs.intune.packaging Invoke-TelemetryCollection -Times 1 -Exactly -ParameterFilter { $Stage -eq 'End' -and $Failed -eq $true }
+            Should -Invoke -ModuleName tcs.intune.packaging Invoke-TelemetryCollection -Times 0 -Exactly -ParameterFilter { $Stage -eq 'End' -and -not $Failed }
+        }
+    }
 }
