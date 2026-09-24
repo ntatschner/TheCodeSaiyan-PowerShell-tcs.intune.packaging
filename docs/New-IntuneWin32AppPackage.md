@@ -46,14 +46,17 @@ Creates an .intunewin package and overwrites any existing package in the output 
 The full path to the source folder containing the setup file and all dependency files.
 
 ```yaml
-Type: String
-Parameter Sets: (All)
+Type:String
+Parameter Sets:   (All)
 Aliases:
-
 Required: True
-Position: 1
+Position: 1Default
+Default value: None
 Default value: None
 Accept pipeline input: False
+input:False
+Accept pipeline input: False
+Accept wildcard characters: False
 Accept wildcard characters: False
 ```
 
@@ -61,14 +64,17 @@ Accept wildcard characters: False
 The complete setup file name including extension (e.g., Setup.exe or Installer.msi).
 
 ```yaml
-Type: String
-Parameter Sets: (All)
+Type:String
+Parameter Sets:   (All)
 Aliases:
-
 Required: True
-Position: 2
+Position: 2Default
+Default value: None
 Default value: None
 Accept pipeline input: False
+input:False
+Accept pipeline input: False
+Accept wildcard characters: False
 Accept wildcard characters: False
 ```
 
@@ -76,14 +82,17 @@ Accept wildcard characters: False
 The full path to the output folder where the packaged .intunewin file will be saved.
 
 ```yaml
-Type: String
-Parameter Sets: (All)
+Type:String
+Parameter Sets:   (All)
 Aliases:
-
 Required: True
-Position: 3
+Position: 3Default
+Default value: None
 Default value: None
 Accept pipeline input: False
+input:False
+Accept pipeline input: False
+Accept wildcard characters: False
 Accept wildcard characters: False
 ```
 
@@ -91,31 +100,38 @@ Accept wildcard characters: False
 Switch to overwrite an existing .intunewin file if already present in the output folder.
 
 ```yaml
-Type: SwitchParameter
-Parameter Sets: (All)
+Type:Switch
+Parameter Sets:   (All)
 Aliases:
-
 Required: False
-Position: Named
+Position:Named
+Default value: None
+Default value: None
 Default value: False
 Accept pipeline input: False
+input:False
+Accept pipeline input: False
+Accept wildcard characters: False
 Accept wildcard characters: False
 ```
 
 ### -IntuneWinAppUtilPath
 The full path to the IntuneWinAppUtil.exe file.
-If not specified or not found,
-the tool will be automatically downloaded to the temporary folder.
+When not specified, the per-user tool folder
+(LocalApplicationData\tcs.intune.packaging) is used and the tool is downloaded there when missing.
 
 ```yaml
-Type: String
-Parameter Sets: (All)
+Type:String
+Parameter Sets:   (All)
 Aliases:
-
 Required: False
-Position: 4
-Default value: (Join-Path -Path $env:TEMP -ChildPath "IntuneWinAppUtil.exe")
+Position: 4Default
+Default value: None
+Default value: (Get-IntuneWinAppUtilPath)
 Accept pipeline input: False
+input:False
+Accept pipeline input: False
+Accept wildcard characters: False
 Accept wildcard characters: False
 ```
 
@@ -124,14 +140,18 @@ Shows what would happen if the cmdlet runs.
 The cmdlet is not run.
 
 ```yaml
-Type: SwitchParameter
-Parameter Sets: (All)
-Aliases: wi
-
+Type:Switch
+Parameter Sets:   (All)
+Aliases:wi
 Required: False
-Position: Named
+Position:Named
+Default value: None
+Default value: None
 Default value: None
 Accept pipeline input: False
+input:False
+Accept pipeline input: False
+Accept wildcard characters: False
 Accept wildcard characters: False
 ```
 
@@ -139,14 +159,18 @@ Accept wildcard characters: False
 Prompts you for confirmation before running the cmdlet.
 
 ```yaml
-Type: SwitchParameter
-Parameter Sets: (All)
-Aliases: cf
-
+Type:Switch
+Parameter Sets:   (All)
+Aliases:cf
 Required: False
-Position: Named
+Position:Named
+Default value: None
+Default value: None
 Default value: None
 Accept pipeline input: False
+input:False
+Accept pipeline input: False
+Accept wildcard characters: False
 Accept wildcard characters: False
 ```
 
@@ -154,14 +178,18 @@ Accept wildcard characters: False
 {{ Fill ProgressAction Description }}
 
 ```yaml
-Type: ActionPreference
-Parameter Sets: (All)
-Aliases: proga
-
+Type:ActionPreference
+Parameter Sets:   (All)
+Aliases:proga
 Required: False
-Position: Named
+Position:Named
+Default value: None
+Default value: None
 Default value: None
 Accept pipeline input: False
+input:False
+Accept pipeline input: False
+Accept wildcard characters: False
 Accept wildcard characters: False
 ```
 
@@ -172,8 +200,12 @@ This cmdlet supports the common parameters: -Debug, -ErrorAction, -ErrorVariable
 
 ## OUTPUTS
 
+### System.Management.Automation.PSCustomObject
+### Name, FileName, SetupFile, UnencryptedContentSize and Path of the package. Name, FileName and
+### UnencryptedContentSize are read with Get-IntuneWin32AppMetaData (IntuneWin32App module) when it
+### is installed; otherwise Name is the setup file name and UnencryptedContentSize is $null.
 ## NOTES
-The IntuneWinAppUtil.exe tool will be automatically downloaded if not found at the specified path.
+The IntuneWinAppUtil.exe tool is downloaded automatically when IntuneWinAppUtilPath is not specified and the tool is missing.
 The source folder should contain all files required for the application installation.
 
 ## RELATED LINKS

@@ -14,15 +14,15 @@ Creates a package JSON metadata file for an application deployment.
 
 ```
 New-PackageJSON [-PackageName] <String> [-Version] <String> [-Description] <String> [-Author] <String>
- [-SourceDirectory] <String> [-MainInstaller] <String> [-ProgressAction <ActionPreference>]
- [<CommonParameters>]
+ [-SourceDirectory] <String> [-MainInstaller] <String> [-ProgressAction <ActionPreference>] [-WhatIf]
+ [-Confirm] [<CommonParameters>]
 ```
 
 ## DESCRIPTION
-The New-PackageJSON function generates a JSON file containing package metadata including
-package name, version, description, author, main installer filename, and a list of all files
-in the source directory.
-This metadata file can be used for tracking and deployment purposes.
+The New-PackageJSON function writes a JSON file with package metadata (package name, version,
+description, author, main installer file name and a comma-separated list of the names of all
+items in the source directory) to "package-\<PackageName\>-v\<Version\>.json" in the source directory.
+An existing metadata file with the same name is overwritten and is not listed in AllFiles.
 
 ## EXAMPLES
 
@@ -31,7 +31,7 @@ This metadata file can be used for tracking and deployment purposes.
 New-PackageJSON -PackageName "MyApp" -Version "1.0.0" -Description "My Application" -Author "IT Team" -SourceDirectory "C:\Apps\MyApp" -MainInstaller "setup.exe"
 ```
 
-Creates a JSON metadata file for MyApp in the source directory.
+Creates C:\Apps\MyApp\package-MyApp-v1.0.0.json.
 
 ## PARAMETERS
 
@@ -39,14 +39,17 @@ Creates a JSON metadata file for MyApp in the source directory.
 The name of the application package.
 
 ```yaml
-Type: String
-Parameter Sets: (All)
+Type:String
+Parameter Sets:   (All)
 Aliases:
-
 Required: True
-Position: 1
+Position: 1Default
+Default value: None
 Default value: None
 Accept pipeline input: False
+input:False
+Accept pipeline input: False
+Accept wildcard characters: False
 Accept wildcard characters: False
 ```
 
@@ -54,14 +57,17 @@ Accept wildcard characters: False
 The version number of the package.
 
 ```yaml
-Type: String
-Parameter Sets: (All)
+Type:String
+Parameter Sets:   (All)
 Aliases:
-
 Required: True
-Position: 2
+Position: 2Default
+Default value: None
 Default value: None
 Accept pipeline input: False
+input:False
+Accept pipeline input: False
+Accept wildcard characters: False
 Accept wildcard characters: False
 ```
 
@@ -69,14 +75,17 @@ Accept wildcard characters: False
 A description of the package and its contents.
 
 ```yaml
-Type: String
-Parameter Sets: (All)
+Type:String
+Parameter Sets:   (All)
 Aliases:
-
 Required: True
-Position: 3
+Position: 3Default
+Default value: None
 Default value: None
 Accept pipeline input: False
+input:False
+Accept pipeline input: False
+Accept wildcard characters: False
 Accept wildcard characters: False
 ```
 
@@ -84,44 +93,93 @@ Accept wildcard characters: False
 The author or creator of the package.
 
 ```yaml
-Type: String
-Parameter Sets: (All)
+Type:String
+Parameter Sets:   (All)
 Aliases:
-
 Required: True
-Position: 4
+Position: 4Default
+Default value: None
 Default value: None
 Accept pipeline input: False
+input:False
+Accept pipeline input: False
+Accept wildcard characters: False
 Accept wildcard characters: False
 ```
 
 ### -SourceDirectory
-The directory path containing the application files to be inventoried.
+The directory that contains the application files.
+The JSON file is written here.
 
 ```yaml
-Type: String
-Parameter Sets: (All)
+Type:String
+Parameter Sets:   (All)
 Aliases:
-
 Required: True
-Position: 5
+Position: 5Default
+Default value: None
 Default value: None
 Accept pipeline input: False
+input:False
+Accept pipeline input: False
+Accept wildcard characters: False
 Accept wildcard characters: False
 ```
 
 ### -MainInstaller
-The filename of the main installer executable or MSI file.
+The file name of the main installer executable or MSI file.
 
 ```yaml
-Type: String
-Parameter Sets: (All)
+Type:String
+Parameter Sets:   (All)
 Aliases:
-
 Required: True
-Position: 6
+Position: 6Default
+Default value: None
 Default value: None
 Accept pipeline input: False
+input:False
+Accept pipeline input: False
+Accept wildcard characters: False
+Accept wildcard characters: False
+```
+
+### -WhatIf
+Shows what would happen if the cmdlet runs.
+The cmdlet is not run.
+
+```yaml
+Type:Switch
+Parameter Sets:   (All)
+Aliases:wi
+Required: False
+Position:Named
+Default value: None
+Default value: None
+Default value: None
+Accept pipeline input: False
+input:False
+Accept pipeline input: False
+Accept wildcard characters: False
+Accept wildcard characters: False
+```
+
+### -Confirm
+Prompts you for confirmation before running the cmdlet.
+
+```yaml
+Type:Switch
+Parameter Sets:   (All)
+Aliases:cf
+Required: False
+Position:Named
+Default value: None
+Default value: None
+Default value: None
+Accept pipeline input: False
+input:False
+Accept pipeline input: False
+Accept wildcard characters: False
 Accept wildcard characters: False
 ```
 
@@ -129,14 +187,18 @@ Accept wildcard characters: False
 {{ Fill ProgressAction Description }}
 
 ```yaml
-Type: ActionPreference
-Parameter Sets: (All)
-Aliases: proga
-
+Type:ActionPreference
+Parameter Sets:   (All)
+Aliases:proga
 Required: False
-Position: Named
+Position:Named
+Default value: None
+Default value: None
 Default value: None
 Accept pipeline input: False
+input:False
+Accept pipeline input: False
+Accept wildcard characters: False
 Accept wildcard characters: False
 ```
 
@@ -147,8 +209,8 @@ This cmdlet supports the common parameters: -Debug, -ErrorAction, -ErrorVariable
 
 ## OUTPUTS
 
-### Creates a JSON file named "package-{PackageName}-v{Version}.json" in the source directory.
+### System.IO.FileInfo
+### The JSON file that was written.
 ## NOTES
-The function automatically inventories all files in the source directory and includes them in the JSON metadata.
 
 ## RELATED LINKS

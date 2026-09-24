@@ -49,13 +49,17 @@ Multiple names can be provided.
 
 ```yaml
 Type: String[]
-Parameter Sets: (All)
+Parameter Sets:   (All)
 Aliases:
-
 Required: True
-Position: Named
+Position:Named
+Default value: None
+Default value: None
 Default value: None
 Accept pipeline input: False
+input:False
+Accept pipeline input: False
+Accept wildcard characters: False
 Accept wildcard characters: False
 ```
 
@@ -63,14 +67,18 @@ Accept wildcard characters: False
 Switch to create the groups in Azure AD.
 
 ```yaml
-Type: SwitchParameter
-Parameter Sets: (All)
+Type:Switch
+Parameter Sets:   (All)
 Aliases:
-
 Required: False
-Position: Named
+Position:Named
+Default value: None
+Default value: None
 Default value: False
 Accept pipeline input: False
+input:False
+Accept pipeline input: False
+Accept wildcard characters: False
 Accept wildcard characters: False
 ```
 
@@ -78,14 +86,18 @@ Accept wildcard characters: False
 Switch to export the group list to a CSV file.
 
 ```yaml
-Type: SwitchParameter
-Parameter Sets: (All)
+Type:Switch
+Parameter Sets:   (All)
 Aliases:
-
 Required: False
-Position: Named
+Position:Named
+Default value: None
+Default value: None
 Default value: False
 Accept pipeline input: False
+input:False
+Accept pipeline input: False
+Accept wildcard characters: False
 Accept wildcard characters: False
 ```
 
@@ -94,14 +106,18 @@ The destination folder path for the CSV file when using -CreateFile.
 Must be a valid container path.
 
 ```yaml
-Type: Object
-Parameter Sets: (All)
+Type:Object
+Parameter Sets:   (All)
 Aliases:
-
 Required: False
-Position: Named
+Position:Named
+Default value: None
+Default value: None
 Default value: None
 Accept pipeline input: False
+input:False
+Accept pipeline input: False
+Accept wildcard characters: False
 Accept wildcard characters: False
 ```
 
@@ -109,14 +125,18 @@ Accept wildcard characters: False
 The Administrative Unit ID in Azure AD where groups should be created.
 
 ```yaml
-Type: String
-Parameter Sets: (All)
+Type:String
+Parameter Sets:   (All)
 Aliases:
-
 Required: False
-Position: Named
+Position:Named
+Default value: None
+Default value: None
 Default value: None
 Accept pipeline input: False
+input:False
+Accept pipeline input: False
+Accept wildcard characters: False
 Accept wildcard characters: False
 ```
 
@@ -125,13 +145,17 @@ Array of member IDs to add to the Available deployment groups.
 
 ```yaml
 Type: String[]
-Parameter Sets: (All)
+Parameter Sets:   (All)
 Aliases:
-
 Required: False
-Position: Named
+Position:Named
+Default value: None
+Default value: None
 Default value: None
 Accept pipeline input: False
+input:False
+Accept pipeline input: False
+Accept wildcard characters: False
 Accept wildcard characters: False
 ```
 
@@ -140,13 +164,17 @@ Array of member IDs to add to the Required deployment groups.
 
 ```yaml
 Type: String[]
-Parameter Sets: (All)
+Parameter Sets:   (All)
 Aliases:
-
 Required: False
-Position: Named
+Position:Named
+Default value: None
+Default value: None
 Default value: None
 Accept pipeline input: False
+input:False
+Accept pipeline input: False
+Accept wildcard characters: False
 Accept wildcard characters: False
 ```
 
@@ -155,13 +183,17 @@ Array of member IDs to add to the Test deployment groups.
 
 ```yaml
 Type: String[]
-Parameter Sets: (All)
+Parameter Sets:   (All)
 Aliases:
-
 Required: False
-Position: Named
+Position:Named
+Default value: None
+Default value: None
 Default value: None
 Accept pipeline input: False
+input:False
+Accept pipeline input: False
+Accept wildcard characters: False
 Accept wildcard characters: False
 ```
 
@@ -170,13 +202,17 @@ Array of member IDs to add to the Phase1 deployment groups.
 
 ```yaml
 Type: String[]
-Parameter Sets: (All)
+Parameter Sets:   (All)
 Aliases:
-
 Required: False
-Position: Named
+Position:Named
+Default value: None
+Default value: None
 Default value: None
 Accept pipeline input: False
+input:False
+Accept pipeline input: False
+Accept wildcard characters: False
 Accept wildcard characters: False
 ```
 
@@ -185,14 +221,18 @@ Shows what would happen if the cmdlet runs.
 The cmdlet is not run.
 
 ```yaml
-Type: SwitchParameter
-Parameter Sets: (All)
-Aliases: wi
-
+Type:Switch
+Parameter Sets:   (All)
+Aliases:wi
 Required: False
-Position: Named
+Position:Named
+Default value: None
+Default value: None
 Default value: None
 Accept pipeline input: False
+input:False
+Accept pipeline input: False
+Accept wildcard characters: False
 Accept wildcard characters: False
 ```
 
@@ -200,14 +240,18 @@ Accept wildcard characters: False
 Prompts you for confirmation before running the cmdlet.
 
 ```yaml
-Type: SwitchParameter
-Parameter Sets: (All)
-Aliases: cf
-
+Type:Switch
+Parameter Sets:   (All)
+Aliases:cf
 Required: False
-Position: Named
+Position:Named
+Default value: None
+Default value: None
 Default value: None
 Accept pipeline input: False
+input:False
+Accept pipeline input: False
+Accept wildcard characters: False
 Accept wildcard characters: False
 ```
 
@@ -215,14 +259,18 @@ Accept wildcard characters: False
 {{ Fill ProgressAction Description }}
 
 ```yaml
-Type: ActionPreference
-Parameter Sets: (All)
-Aliases: proga
-
+Type:ActionPreference
+Parameter Sets:   (All)
+Aliases:proga
 Required: False
-Position: Named
+Position:Named
+Default value: None
+Default value: None
 Default value: None
 Accept pipeline input: False
+input:False
+Accept pipeline input: False
+Accept wildcard characters: False
 Accept wildcard characters: False
 ```
 

@@ -5,190 +5,73 @@ online version: https://github.com/microsoft/Microsoft-Win32-Content-Prep-Tool
 schema: 2.0.0
 ---
 
-# New-APFDeployment
+# New-ApplicationDeploymentGroup
 
 ## SYNOPSIS
-Creates an Application Packaging Framework (APF) deployment package for Intune.
+Generates, and optionally creates, the Entra ID security groups used to deploy an application with Intune.
 
 ## SYNTAX
 
 ```
-New-APFDeployment [[-Name] <String>] [[-Version] <Version>] [[-Target] <String>] [[-InstallSwitches] <String>]
- [[-UninstallSwitches] <String>] [[-UninstallPath] <String>] [-Path] <String> [[-IncludedFiles] <String[]>]
- [[-DestinationFolder] <String>] [-CreateIntuneWinPackage] [-ProgressAction <ActionPreference>] [-WhatIf]
+New-ApplicationDeploymentGroup -ApplicationName <String[]> [-CreateGroups] [-CreateFile]
+ [-Destination <String>] [-AdminUnitId <String>] [-AvailableMembers <String[]>] [-RequiredMembers <String[]>]
+ [-TestMembers <String[]>] [-Phase1Members <String[]>] [-ProgressAction <ActionPreference>] [-WhatIf]
  [-Confirm] [<CommonParameters>]
 ```
 
 ## DESCRIPTION
-The New-APFDeployment function creates a folder named after the application in DestinationFolder,
-copies the installer and any additional files into it, adds the APF installer scripts from the
-module's Application template and fills in config.installer.json and the detection script.
-Optionally it also wraps the folder into a .intunewin package with IntuneWinAppUtil.exe.
+The New-ApplicationDeploymentGroup function builds four group names for each application:
+  Intune-AG-\<Name\>-Available, Intune-AG-\<Name\>-Required, Intune-App-\<Name\>-Test and
+  Intune-App-\<Name\>-Phase1
+where \<Name\> is the application name in title case without spaces.
 
-For MSI files the name and version are read from the MSI when not supplied (Windows only).
-For
-EXE files the file name and file version are used.
+By default the group list is returned.
+With -CreateGroups the groups are created in Entra ID
+(existing groups are skipped), optionally added to an administrative unit and given members.
+With -CreateFile the list is also exported to Application-Groups.csv in Destination.
 
-When the application folder already exists you are asked before it is deleted and recreated.
+Creating groups needs the Microsoft.Entra module (Get-EntraGroup, New-EntraGroup,
+Add-EntraGroupMember) and, for -AdminUnitId, Microsoft.Graph.Identity.DirectoryManagement.
+Connect first with Connect-Entra or Connect-MgGraph.
+
+The alias New-ApplicationDeploymentGroups is kept for compatibility with earlier versions.
 
 ## EXAMPLES
 
 ### EXAMPLE 1
 ```
-New-APFDeployment -Path "C:\Installers\MyApp.msi" -Name "MyApp" -Version "1.0.0.0"
+New-ApplicationDeploymentGroup -ApplicationName "Microsoft 365 Apps"
 ```
 
-Creates an APF deployment package for MyApp version 1.0.0.0 in the current directory.
+Returns the four group names for Microsoft 365 Apps, for example Intune-AG-Microsoft365Apps-Available.
 
 ### EXAMPLE 2
 ```
-New-APFDeployment -Path "C:\Installers\Setup.exe" -InstallSwitches "/S" -UninstallSwitches "/U" -DestinationFolder C:\Packages -CreateIntuneWinPackage
+New-ApplicationDeploymentGroup -ApplicationName "Microsoft 365 Apps" -CreateGroups -TestMembers '00000000-0000-0000-0000-000000000001'
 ```
 
-Creates an APF deployment package with custom install and uninstall switches and a .intunewin package.
+Creates the security groups in Entra ID and adds one member to the Test group.
+
+### EXAMPLE 3
+```
+New-ApplicationDeploymentGroup -ApplicationName "Adobe Reader", "Google Chrome" -CreateFile -Destination "C:\Output"
+```
+
+Returns the group names for Adobe Reader and Google Chrome and writes them to C:\Output\Application-Groups.csv.
 
 ## PARAMETERS
 
-### -Name
-The name of the application.
-It is written into the exported configuration files and used as the
-folder name.
-When omitted it is read from the installer file.
-
-```yaml
-Type:String
-Parameter Sets:   (All)
-Aliases: ApplicationName,AppName
-Required: False
-Position: 1Default
-Default value: None
-Default value: None
-Accept pipeline input: False
-input:False
-Accept pipeline input: False
-Accept wildcard characters: False
-Accept wildcard characters: False
-```
-
-### -Version
-The version of the application in the format x.x.x.x.
-When omitted it is read from the installer file.
-
-```yaml
-Type:Version
-Parameter Sets:   (All)
-Aliases: ApplicationVersion,AppVersion
-Required: False
-Position: 2Default
-Default value: None
-Default value: None
-Accept pipeline input: False
-input:False
-Accept pipeline input: False
-Accept wildcard characters: False
-Accept wildcard characters: False
-```
-
-### -Target
-The installation context: 'system' or 'user'.
-Default is 'system'.
-
-```yaml
-Type:String
-Parameter Sets:   (All)
-Aliases:
-Required: False
-Position: 3Default
-Default value: None
-Default value: System
-Accept pipeline input: False
-input:False
-Accept pipeline input: False
-Accept wildcard characters: False
-Accept wildcard characters: False
-```
-
-### -InstallSwitches
-The command-line switches used to install the application.
-
-```yaml
-Type:String
-Parameter Sets:   (All)
-Aliases:
-Required: False
-Position: 4Default
-Default value: None
-Default value: None
-Accept pipeline input: False
-input:False
-Accept pipeline input: False
-Accept wildcard characters: False
-Accept wildcard characters: False
-```
-
-### -UninstallSwitches
-The command-line switches used to uninstall the application.
-
-```yaml
-Type:String
-Parameter Sets:   (All)
-Aliases:
-Required: False
-Position: 5Default
-Default value: None
-Default value: None
-Accept pipeline input: False
-input:False
-Accept pipeline input: False
-Accept wildcard characters: False
-Accept wildcard characters: False
-```
-
-### -UninstallPath
-The path to the uninstall executable or file.
-
-```yaml
-Type:String
-Parameter Sets:   (All)
-Aliases:
-Required: False
-Position: 6Default
-Default value: None
-Default value: None
-Accept pipeline input: False
-input:False
-Accept pipeline input: False
-Accept wildcard characters: False
-Accept wildcard characters: False
-```
-
-### -Path
-The path to the installer file (.msi or .exe).
-
-```yaml
-Type:String
-Parameter Sets:   (All)
-Aliases: InstallerFile,SourceFile
-Required: True
-Position: 7Default
-Default value: None
-Default value: None
-Accept pipeline input: False
-input:False
-Accept pipeline input: False
-Accept wildcard characters: False
-Accept wildcard characters: False
-```
-
-### -IncludedFiles
-Paths to additional files to include in the package.
+### -ApplicationName
+The name(s) of the application(s) for which to create deployment groups.
+Multiple names can be provided.
 
 ```yaml
 Type: String[]
 Parameter Sets:   (All)
 Aliases:
-Required: False
-Position: 8Default
+Required: True
+Position:Named
+Default value: None
 Default value: None
 Default value: None
 Accept pipeline input: False
@@ -198,29 +81,8 @@ Accept wildcard characters: False
 Accept wildcard characters: False
 ```
 
-### -DestinationFolder
-The folder in which the application folder is created.
-Default is the current directory.
-
-```yaml
-Type:String
-Parameter Sets:   (All)
-Aliases:
-Required: False
-Position: 9Default
-Default value: None
-Default value: $PWD.Path
-Accept pipeline input: False
-input:False
-Accept pipeline input: False
-Accept wildcard characters: False
-Accept wildcard characters: False
-```
-
-### -CreateIntuneWinPackage
-Also creates a .intunewin package in DestinationFolder.
-IntuneWinAppUtil.exe is downloaded to the
-per-user tool folder (LocalApplicationData\tcs.intune.packaging) after confirmation when it is missing.
+### -CreateGroups
+Create the groups in Entra ID.
 
 ```yaml
 Type:Switch
@@ -231,6 +93,140 @@ Position:Named
 Default value: None
 Default value: None
 Default value: False
+Accept pipeline input: False
+input:False
+Accept pipeline input: False
+Accept wildcard characters: False
+Accept wildcard characters: False
+```
+
+### -CreateFile
+Export the group list to Application-Groups.csv in Destination.
+
+```yaml
+Type:Switch
+Parameter Sets:   (All)
+Aliases:
+Required: False
+Position:Named
+Default value: None
+Default value: None
+Default value: False
+Accept pipeline input: False
+input:False
+Accept pipeline input: False
+Accept wildcard characters: False
+Accept wildcard characters: False
+```
+
+### -Destination
+The folder for Application-Groups.csv when using -CreateFile.
+Must be an existing folder.
+
+```yaml
+Type:String
+Parameter Sets:   (All)
+Aliases:
+Required: False
+Position:Named
+Default value: None
+Default value: None
+Default value: None
+Accept pipeline input: False
+input:False
+Accept pipeline input: False
+Accept wildcard characters: False
+Accept wildcard characters: False
+```
+
+### -AdminUnitId
+The ID of the Entra ID administrative unit that new groups are added to.
+
+```yaml
+Type:String
+Parameter Sets:   (All)
+Aliases:
+Required: False
+Position:Named
+Default value: None
+Default value: None
+Default value: None
+Accept pipeline input: False
+input:False
+Accept pipeline input: False
+Accept wildcard characters: False
+Accept wildcard characters: False
+```
+
+### -AvailableMembers
+Object IDs of the members to add to the Available groups.
+
+```yaml
+Type: String[]
+Parameter Sets:   (All)
+Aliases:
+Required: False
+Position:Named
+Default value: None
+Default value: None
+Default value: None
+Accept pipeline input: False
+input:False
+Accept pipeline input: False
+Accept wildcard characters: False
+Accept wildcard characters: False
+```
+
+### -RequiredMembers
+Object IDs of the members to add to the Required groups.
+
+```yaml
+Type: String[]
+Parameter Sets:   (All)
+Aliases:
+Required: False
+Position:Named
+Default value: None
+Default value: None
+Default value: None
+Accept pipeline input: False
+input:False
+Accept pipeline input: False
+Accept wildcard characters: False
+Accept wildcard characters: False
+```
+
+### -TestMembers
+Object IDs of the members to add to the Test groups.
+
+```yaml
+Type: String[]
+Parameter Sets:   (All)
+Aliases:
+Required: False
+Position:Named
+Default value: None
+Default value: None
+Default value: None
+Accept pipeline input: False
+input:False
+Accept pipeline input: False
+Accept wildcard characters: False
+Accept wildcard characters: False
+```
+
+### -Phase1Members
+Object IDs of the members to add to the Phase1 groups.
+
+```yaml
+Type: String[]
+Parameter Sets:   (All)
+Aliases:
+Required: False
+Position:Named
+Default value: None
+Default value: None
+Default value: None
 Accept pipeline input: False
 input:False
 Accept pipeline input: False
@@ -303,9 +299,8 @@ This cmdlet supports the common parameters: -Debug, -ErrorAction, -ErrorVariable
 
 ## OUTPUTS
 
-### System.String
-### Messages that describe where the package was created and which install commands to use.
+### System.Management.Automation.PSCustomObject
+### One object per group (Name, GroupName, GroupDescription) when -CreateGroups is not used.
 ## NOTES
-Only MSI and EXE installer files are supported.
 
 ## RELATED LINKS

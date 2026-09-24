@@ -34,14 +34,17 @@ PS C:\> {{ Add example code here }}
 MSI Database Filename
 
 ```yaml
-Type: Object
-Parameter Sets: (All)
-Aliases: Filename, MSIDbName, Database, Msi
-
+Type:Object
+Parameter Sets:   (All)
+Aliases: Filename, MSIDbName, Database,Msi
 Required: True
-Position: 0
+Position: 0Default
 Default value: None
+Default value: None
+Accept pipeline input: False
+input:False
 Accept pipeline input: True (ByPropertyName, ByValue)
+Accept wildcard characters: False
 Accept wildcard characters: False
 ```
 
@@ -49,14 +52,18 @@ Accept wildcard characters: False
 {{ Fill ProgressAction Description }}
 
 ```yaml
-Type: ActionPreference
-Parameter Sets: (All)
-Aliases: proga
-
+Type:ActionPreference
+Parameter Sets:   (All)
+Aliases:proga
 Required: False
-Position: Named
+Position:Named
+Default value: None
+Default value: None
 Default value: None
 Accept pipeline input: False
+input:False
+Accept pipeline input: False
+Accept wildcard characters: False
 Accept wildcard characters: False
 ```
 
