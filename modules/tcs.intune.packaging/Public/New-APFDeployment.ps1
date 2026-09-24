@@ -190,8 +190,7 @@ function New-APFDeployment {
                 Copy-Item -Path $File -Destination $AppFolder -Recurse -ErrorAction Stop
             }
             # Copy the template files to the application folder
-            $TemplateFolder = Join-Path -Path (Join-Path -Path $PSScriptRoot -ChildPath 'Templates') -ChildPath 'Application'
-            Copy-Item -Path (Join-Path -Path $TemplateFolder -ChildPath '*') -Destination $AppFolder -Recurse -Exclude '*.md' -ErrorAction Stop
+            Copy-APFTemplate -Template 'Application' -Destination $AppFolder -Exclude '*.md'
 
             # Update the template files with the application details
             $ConfigPath = Join-Path -Path $AppFolder -ChildPath 'config.installer.json'

@@ -265,7 +265,7 @@ function New-APFConfigDeployment {
                     $null = New-Item -Path $IncludeFolder -ItemType Directory -Force -ErrorAction Stop
                     Copy-IncludedItem -Item $IncludedFiles -Destination $PackageFolder
 
-                    Copy-Item -Path (Join-Path -Path $TemplateFolder -ChildPath '*') -Destination $PackageFolder -Recurse -Exclude '*.md', '*config.*' -ErrorAction Stop
+                    Copy-APFTemplate -Template 'Registry' -Destination $PackageFolder -Exclude '*.md', '*config.*'
 
                     $MainConfig = Get-Content -Path (Join-Path -Path $TemplateFolder -ChildPath 'config.installer.json') -Raw -ErrorAction Stop | ConvertFrom-Json
                     Add-TemplateValue -Config $MainConfig -Property 'name' -Value $Name
@@ -281,9 +281,8 @@ function New-APFConfigDeployment {
                     }
                 }
                 { $_ -in "PowerShellProfiles", "Files" } {
-                    $TemplateFolder = Join-Path -Path $TemplateRoot -ChildPath $(if ($ConfigurationType -eq 'Files') { 'Files' } else { 'PowerShellProfile' })
                     Write-Verbose "Copying template files to destination folder."
-                    Copy-Item -Path (Join-Path -Path $TemplateFolder -ChildPath '*') -Destination $PackageFolder -Recurse -ErrorAction Stop
+                    Copy-APFTemplate -Template $(if ($ConfigurationType -eq 'Files') { 'Files' } else { 'PowerShellProfile' }) -Destination $PackageFolder
                     Copy-IncludedItem -Item $Files -Destination $PackageFolder
 
                     $FileNames = @($Files | ForEach-Object { Split-Path -Path $_ -Leaf }) -join ','
@@ -307,7 +306,7 @@ function New-APFConfigDeployment {
                     Copy-Item -Path $Path -Destination $PackageFolder -ErrorAction Stop
                     Copy-IncludedItem -Item $IncludedFiles -Destination $PackageFolder
                     Write-Verbose "Copying template files to destination folder."
-                    Copy-Item -Path (Join-Path -Path (Join-Path -Path $TemplateRoot -ChildPath 'standalone-exe') -ChildPath '*') -Destination $PackageFolder -Recurse -ErrorAction Stop
+                    Copy-APFTemplate -Template 'standalone-exe' -Destination $PackageFolder
 
                     $FileName = Split-Path -Path $Path -Leaf
                     $MainConfig = Get-Content -Path $ConfigPath -Raw -ErrorAction Stop | ConvertFrom-Json
@@ -329,12 +328,14 @@ function New-APFConfigDeployment {
                 }
                 { $_ -in "Script-OS", "WindowsFeature" } {
                     if ($ConfigurationType -eq 'Script-OS') {
-                        $TemplateFolder = Join-Path -Path $TemplateRoot -ChildPath 'script-os'
+                        $TemplateName = 'script-os'
+                        $TemplateFolder = Join-Path -Path $TemplateRoot -ChildPath $TemplateName
                         $EntriesTemplate = 'os-config_entries.config.csv'
                         $DetectionFile = 'Intune-D-Detection.ps1'
                     }
                     else {
-                        $TemplateFolder = Join-Path -Path $TemplateRoot -ChildPath 'WindowsFeatures'
+                        $TemplateName = 'WindowsFeatures'
+                        $TemplateFolder = Join-Path -Path $TemplateRoot -ChildPath $TemplateName
                         $EntriesTemplate = 'windowsfeatures_entries.config.csv'
                         $DetectionFile = 'Intune-D-WindowsFeatureDetection.ps1'
                     }
@@ -348,7 +349,7 @@ function New-APFConfigDeployment {
                     $null = New-Item -Path $IncludeFolder -ItemType Directory -Force -ErrorAction Stop
                     Copy-IncludedItem -Item $IncludedFiles -Destination $PackageFolder
 
-                    Copy-Item -Path (Join-Path -Path $TemplateFolder -ChildPath '*') -Destination $PackageFolder -Recurse -Exclude '*.md', '*config.*' -ErrorAction Stop
+                    Copy-APFTemplate -Template $TemplateName -Destination $PackageFolder -Exclude '*.md', '*config.*'
 
                     $MainConfig = Get-Content -Path (Join-Path -Path $TemplateFolder -ChildPath 'config.installer.json') -Raw -ErrorAction Stop | ConvertFrom-Json
                     Add-TemplateValue -Config $MainConfig -Property 'name' -Value $Name
@@ -366,7 +367,7 @@ function New-APFConfigDeployment {
                 { $_ -in "Script-App", "Script-User", "Custom" } {
                     $TemplateFolder = Join-Path -Path $TemplateRoot -ChildPath 'script'
                     Write-Verbose "Copying template files to destination folder."
-                    Copy-Item -Path (Join-Path -Path $TemplateFolder -ChildPath '*') -Destination $PackageFolder -Recurse -Exclude '*.md', 'Intune-Custom.ps1' -ErrorAction Stop
+                    Copy-APFTemplate -Template 'script' -Destination $PackageFolder -Exclude '*.md', 'Intune-Custom.ps1'
                     if ($ConfigurationType -eq 'Custom') {
                         Copy-Item -Path (Join-Path -Path $TemplateFolder -ChildPath 'Intune-Custom.ps1') -Destination $PackageFolder -ErrorAction Stop
                         $ScriptFile = 'Intune-Custom.ps1'
@@ -397,7 +398,7 @@ function New-APFConfigDeployment {
                     Copy-Item -Path $Path -Destination $PackageFolder -Recurse -ErrorAction Stop
                     Copy-IncludedItem -Item $IncludedFiles -Destination $PackageFolder
                     Write-Verbose "Copying template files to destination folder."
-                    Copy-Item -Path (Join-Path -Path (Join-Path -Path $TemplateRoot -ChildPath 'standalone-application') -ChildPath '*') -Destination $PackageFolder -Recurse -Exclude '*.md' -ErrorAction Stop
+                    Copy-APFTemplate -Template 'standalone-application' -Destination $PackageFolder -Exclude '*.md'
 
                     $MainConfig = Get-Content -Path $ConfigPath -Raw -ErrorAction Stop | ConvertFrom-Json
                     Add-TemplateValue -Config $MainConfig -Property 'name' -Value $Name

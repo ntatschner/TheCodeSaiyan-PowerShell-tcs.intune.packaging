@@ -240,22 +240,29 @@ Describe 'New-APFConfigDeployment' {
             Get-AssignedString -Path (Join-Path -Path $folder -ChildPath 'Intune-D-Detection.ps1') -Variable 'Version' | Should -BeExactly '1.0'
         }
 
-        It 'Writes the name into every detection template it fills in (<Type>)' -ForEach @(
-            @{ Type = 'Registry'; Detection = 'Intune-D-RegistryDetection.ps1' }
-            @{ Type = 'Script-OS'; Detection = 'Intune-D-Detection.ps1' }
-            @{ Type = 'WindowsFeature'; Detection = 'Intune-D-WindowsFeatureDetection.ps1' }
-            @{ Type = 'Custom'; Detection = 'Intune-D-Detection.ps1' }
+        It 'Writes the name into the detection script of the <Template> template so that it parses' -ForEach @(
+            @{ Template = 'Application' }
+            @{ Template = 'Files' }
+            @{ Template = 'PowerShellProfile' }
+            @{ Template = 'Registry' }
+            @{ Template = 'WindowsFeatures' }
+            @{ Template = 'script' }
+            @{ Template = 'script-os' }
+            @{ Template = 'standalone-application' }
+            @{ Template = 'standalone-exe' }
         ) {
-            $name = "It's `$(x) `"quoted`""
             # A double quote is not allowed in a folder name, so only the template text is checked here
-            $template = Join-Path -Path $TestDrive -ChildPath ([guid]::NewGuid().ToString())
-            $moduleRoot = Split-Path -Path (Split-Path -Path $PSScriptRoot -Parent) -Parent
-            $source = Get-ChildItem -Path (Join-Path -Path $moduleRoot -ChildPath 'Public/Templates') -Recurse -Filter $Detection | Select-Object -First 1
-            Copy-Item -Path $source.FullName -Destination $template
-            InModuleScope tcs.intune.packaging -Parameters @{ Template = $template; Name = $name } {
-                Set-TemplateToken -Path $Template -Values @{ NAME = $Name; VERSION = '1.0' }
+            $name = "It's `$(x) `"quoted`" .."
+            $package = Join-Path -Path $TestDrive -ChildPath ([guid]::NewGuid().ToString())
+            $null = New-Item -Path $package -ItemType Directory
+            $detection = InModuleScope tcs.intune.packaging -Parameters @{ Template = $Template; Package = $package; Name = $name } {
+                Copy-APFTemplate -Template $Template -Destination $Package
+                $script = (Get-ChildItem -Path $Package -Filter 'Intune-D-*.ps1').FullName
+                Set-TemplateToken -Path $script -Values @{ NAME = $Name; VERSION = '1.0' }
+                $script
             }
-            Get-AssignedString -Path $template -Variable 'AppName' | Should -BeExactly $name
+            Get-AssignedString -Path $detection -Variable 'AppName' | Should -BeExactly $name
+            Get-AssignedString -Path $detection -Variable 'Version' | Should -BeExactly '1.0'
         }
 
         It 'Rejects the name <Name>' -ForEach @(
