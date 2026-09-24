@@ -1,4 +1,6 @@
 function New-Win32InstallExperience {
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSUseShouldProcessForStateChangingFunctions', '',
+        Justification = 'Only builds an in-memory hashtable; no system state is changed.')]
     [CmdletBinding()]
     [OutputType([Hashtable])]
     param (
@@ -9,14 +11,14 @@ function New-Win32InstallExperience {
         [string]$restartBehavior = 'basedOnReturnCode',
 
         [Alias('InstallFor')]
-        [ValidateSet('system', 'sser')]
+        [ValidateSet('system', 'user')]
         [string]$runAsAccount = 'system'
     )
 
     $installExperienceHashTable = @{
         "maxRunTimeInMinutes" = $maxRunTimeInMinutes
-        "restartBehavior" = $restartBehavior
-        "runAsAccount" = $runAsAccount
+        "restartBehavior"     = $restartBehavior
+        "runAsAccount"        = $runAsAccount
     }
     if ([string]::IsNullOrEmpty($maxRunTimeInMinutes)) {
         $installExperienceHashTable.Remove("maxRunTimeInMinutes")

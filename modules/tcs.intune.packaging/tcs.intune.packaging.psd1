@@ -1,27 +1,24 @@
 @{
-    ModuleVersion        = '0.2.10'
-    CompatiblePSEditions = @('Desktop')
+    RootModule           = 'tcs.intune.packaging.psm1'
+    ModuleVersion        = '0.3.0'
+    CompatiblePSEditions = @('Desktop', 'Core')
     GUID                 = 'bfe12388-5f86-4da1-b08b-a439ff6f690c'
     Author               = 'Nigel Tatschner'
     CompanyName          = 'TheCodeSaiyan'
     Copyright            = '(c) 2024 Nigel Tatschner. All rights reserved.'
-    Description          = 'A set of functions designed to package and deploy Application packages to Microsoft Intune.'
+    Description          = 'Windows-only functions to build, package and deploy application and configuration packages for Microsoft Intune (Win32 apps, .intunewin packages and APF installer templates).'
     PowerShellVersion    = '5.1'
     RequiredModules      = @(
-        @{ ModuleName     = 'tcs.core'
-            ModuleVersion = '0.1.1'
-        }
+        @{ ModuleName = 'tcs.core'; ModuleVersion = '0.3.0' }
     )
-    NestedModules        = @('tcs.intune.packaging.psm1')
     FunctionsToExport    = @(
-        'Convert-ModuleNameAndReferences',
         'ConvertTo-SignedScript',
         'Get-IntunePackagingTool',
-        'Get-MSIProperties',
+        'Get-MSIProperty',
         'Invoke-Executable',
         'New-APFConfigDeployment',
         'New-APFDeployment',
-        'New-ApplicationDeploymentGroups',
+        'New-ApplicationDeploymentGroup',
         'New-IntuneApplication',
         'New-IntuneWin32AppPackage',
         'New-IntuneWin32Application',
@@ -32,12 +29,13 @@
     )
     CmdletsToExport      = @()
     VariablesToExport    = @()
-    AliasesToExport      = @()
+    AliasesToExport      = @('Get-MSIProperties', 'New-ApplicationDeploymentGroups')
     PrivateData          = @{
         PSData = @{
-            Tags                       = @('Intune', 'Packaging', 'Deployment', 'Applications')
-            ExternalModuleDependencies = ''
-            ReleaseNotes               = 'Added support for specifying group members for Available, Required, Test, and Phase1 groups in New-ApplicationDeploymentGroups.'
+            Tags         = @('Intune', 'Packaging', 'Deployment', 'Applications', 'Win32', 'IntuneWin', 'Windows', 'PSEdition_Desktop', 'PSEdition_Core')
+            ProjectUri   = 'https://github.com/ntatschner/TheCodeSaiyan-PowerShell-tcs.intune.packaging'
+            LicenseUri   = 'https://github.com/ntatschner/TheCodeSaiyan-PowerShell-tcs.intune.packaging/blob/main/LICENSE'
+            ReleaseNotes = 'https://github.com/ntatschner/TheCodeSaiyan-PowerShell-tcs.intune.packaging/blob/main/CHANGELOG.md'
         }
     }
     HelpInfoURI          = 'https://thecodesaiyan.io/modules/tcs.intune.packaging/'

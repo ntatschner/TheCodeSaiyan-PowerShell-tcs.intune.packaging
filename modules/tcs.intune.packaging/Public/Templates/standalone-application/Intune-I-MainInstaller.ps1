@@ -15,7 +15,7 @@ $StorageFolderName = "standalone-applications"
 $StorageFolderFullPath = Join-Path -Path $APFFullBase -ChildPath "$StorageFolderBase\$StorageFolderName"
 $InvalidChars = [System.IO.Path]::GetInvalidFileNameChars()
 $LogName = "APF_$($InstallConfig.name)_StandAlone_application.log"
-$InvalidChars | % { $LogName = $LogName -replace [regex]::Escape($_), "" }
+$InvalidChars | ForEach-Object { $LogName = $LogName -replace [regex]::Escape($_), "" }
 $LoggingPath = Join-Path -Path (Join-Path -Path $ConfigBase -ChildPath "\$APFBase\UserLogs\") -ChildPath $LogName
 $ExistingConfig = $false
 $StartTime = Get-Date
@@ -26,7 +26,7 @@ try {
     Import-Module -Name "$PSScriptRoot\Write-DeploymentLog.ps1" -Force -ErrorAction Stop
 }
 Catch {
-    Write-Host "Failed to import the logging function with error: $_"
+    Write-Error -Message "Failed to import the logging function with error: $_"
     exit 1
 }
 #endregion Logging Function
@@ -167,7 +167,7 @@ else {
                     foreach ($Shortcut in $StartMenuShortcuts) {
                         $WshShell = New-Object -ComObject WScript.Shell
                         $ShortcutObject = $WshShell.CreateShortcut($Shortcut)
-                        try {                            
+                        try {
                             Write-DeploymentLog -Message "Creating shortcut $($Shortcut.BaseName)" -MessageType "Info" -LogPath $LoggingPath
                             $ShortcutFullPath = Join-Path -Path $ShortcutBasePath -ChildPath "$($Shortcut.BaseName).lnk"
                             $WshShell = New-Object -ComObject WScript.Shell
@@ -194,7 +194,7 @@ else {
                 Copy-Item -Path "$ConfigBase\$APFBase\AppConfigs\$($InstallConfig.name)_config.installer.json" -Destination "$ConfigBase\$APFBase\AppConfigs\$($InstallConfig.name)_config.installer.json.bak" -Force
                 Write-DeploymentLog -Message "Updating the config file for the installed application" -MessageType "Info" -LogPath $LoggingPath
                 $InstallConfig | ConvertTo-Json | Set-Content -Path "$ConfigBase\$APFBase\AppConfigs\$($InstallConfig.name)_config.installer.json"
-            }       
+            }
         }
         catch {
             Write-DeploymentLog -Message "Failed to copy $($InstallConfig.filename) to storage folder $($StorageFolderFullPath), breaking.." -MessageType "Error" -LogPath $LoggingPath

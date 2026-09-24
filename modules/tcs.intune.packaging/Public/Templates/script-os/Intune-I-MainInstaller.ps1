@@ -15,7 +15,7 @@ $StorageFolderName = "config"
 $StorageFolderFullPath = Join-Path -Path $APFFullBase -ChildPath "$StorageFolderBase\$StorageFolderName"
 $InvalidChars = [System.IO.Path]::GetInvalidFileNameChars()
 $LogName = "APF_$($InstallConfig.name)_OSConfig.log"
-$InvalidChars | % { $LogName = $LogName -replace [regex]::Escape($_), "" }
+$InvalidChars | ForEach-Object { $LogName = $LogName -replace [regex]::Escape($_), "" }
 $LoggingPath = Join-Path -Path (Join-Path -Path $ConfigBase -ChildPath "\$APFBase\UserLogs\") -ChildPath $LogName
 $ExistingConfig = $false
 $StartTime = Get-Date
@@ -26,7 +26,7 @@ try {
     Import-Module -Name "$PSScriptRoot\Write-DeploymentLog.ps1" -Force -ErrorAction Stop
 }
 Catch {
-    Write-Host "Failed to import the logging function with error: $_"
+    Write-Error -Message "Failed to import the logging function with error: $_"
     exit 1
 }
 #endregion Logging Function
@@ -82,9 +82,9 @@ if (-not [string]::IsNullOrEmpty($InstallConfig.precommandfile)) {
 Write-DeploymentLog -Message "Starting deployment of $($InstallConfig.name) OSConfig entries, Version $($InstallConfig.version)" -MessageType "Info" -LogPath $LoggingPath
 # Log the config import
 Write-DeploymentLog -Message "Imported the following configuration: `n$($InstallConfig | ConvertTo-Json -Depth 5)" -MessageType "Info" -LogPath $LoggingPath
-    
+
 # Create storage folder if it dosent exist
-    
+
 if (-not (Test-Path -Path $StorageFolderFullPath)) {
     Write-DeploymentLog -Message "Creating the APF storage folder" -MessageType "Info" -LogPath $LoggingPath
     New-Item -Path $StorageFolderFullPath -ItemType Directory -Force
@@ -133,7 +133,7 @@ foreach ($ConfigEntry in $ConfigData) {
                         $Pattern = ";?$([regex]::Escape($ConfigEntry.settingvalue))"
                         $CurrentValue = [System.Environment]::GetEnvironmentVariable($ConfigEntry.settingname, [System.EnvironmentVariableTarget]::Machine)
                         $Regex = [regex]::new($Pattern)
-                        $NewValue = $Regex.Replace($CurrentValue, "") 
+                        $NewValue = $Regex.Replace($CurrentValue, "")
                         [System.Environment]::SetEnvironmentVariable($ConfigEntry.settingname, $NewValue, [System.EnvironmentVariableTarget]::Machine)
                         $ConfigEntry.Result = "Success"
                     }

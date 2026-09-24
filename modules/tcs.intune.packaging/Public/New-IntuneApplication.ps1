@@ -12,53 +12,109 @@ function New-IntuneApplication {
         The name of the application to be packaged.
 
     .PARAMETER SourceFiles
-        Array of paths to the source files that will be included in the application package.
+        The source files for the package: either one folder that contains all files, or one or more files.
+        When several files are given they are copied to "<OutputFolder>/<ApplicationName>.<Version>" first.
 
     .PARAMETER MainInstallerFileName
-        The filename of the main installer executable or MSI file.
+        The file name of the main installer (for example setup.exe or installer.msi). It must be one of
+        the source files, or be inside the source folder.
 
     .PARAMETER OutputFolder
-        The folder where the application package will be created. Default is the current directory.
+        The existing folder where the JSON and .intunewin files are created. Default is the current directory.
 
     .PARAMETER Description
-        A description of the application. Default includes ApplicationName, Publisher, Version, Developer, and notes.
+        A description of the application. Default is a Markdown summary of ApplicationName, Publisher,
+        Version, Developer and Notes.
 
     .PARAMETER Publisher
-        The publisher of the application. Default is the current username.
+        The publisher of the application. Default is the current user name.
 
     .PARAMETER Version
         The version of the application. Default is "1.0".
 
     .PARAMETER Developer
-        The developer of the application. Default is the current username.
+        The developer of the application. Default is the current user name.
 
-    .PARAMETER owner
+    .PARAMETER Owner
         The owner of the application.
 
-    .PARAMETER notes
+    .PARAMETER Notes
         Additional notes about the application.
 
     .PARAMETER LogoPath
-        Path to the application logo image file. Must be a PNG, JPG, or JPEG file.
+        Path to the application logo: a PNG or JPG image of at most 256x256 pixels.
 
     .PARAMETER InstallFor
-        Specifies the installation context: "User" or "System". Default is "System".
+        The installation context: "User" or "System". Default is "System".
 
-    .EXAMPLE
-        New-IntuneApplication -ApplicationName "MyApp" -SourceFiles "C:\Source\*" -MainInstallerFileName "setup.exe"
-        
-        Creates an Intune application package for MyApp in the current directory.
+    .PARAMETER RestartBehavior
+        The device restart behaviour: basedOnReturnCode (default), allow, suppress or force.
 
-    .EXAMPLE
-        New-IntuneApplication -ApplicationName "MyApp" -SourceFiles "C:\Source\installer.msi", "C:\Source\config.xml" -MainInstallerFileName "installer.msi" -OutputFolder "C:\Packages" -Version "2.1" -LogoPath "C:\Images\logo.png"
-        
-        Creates an Intune application package with specific version and logo.
+    .PARAMETER IsFeatured
+        Whether the application is featured in the Company Portal. Default is $false.
+
+    .PARAMETER InstallCommand
+        The command line that installs the application.
+
+    .PARAMETER UninstallCommand
+        The command line that uninstalls the application.
+
+    .PARAMETER RequirementRuleConfig
+        A hashtable that describes the requirement rules; written to the JSON file.
+
+    .PARAMETER DetectionRuleConfig
+        A hashtable that describes the detection rules (for example from New-IntuneWin32Rule); written to the JSON file.
+
+    .PARAMETER AssignmentType
+        How the application is assigned: User-Group, Device-Group, All-Users or All-Devices.
+
+    .PARAMETER AssignmentGroup
+        The group the application is assigned to, for the User-Group and Device-Group assignment types.
+
+    .PARAMETER FilterRuleType
+        Whether the assignment filter includes or excludes devices: Include or Exclude.
+
+    .PARAMETER FilterRule
+        The assignment filter rule.
+
+    .PARAMETER Publish
+        Publishes the package to Intune with Publish-IntuneAppPackage after creating it. DetectionRuleConfig
+        (and RequirementRuleConfig) must then be rules created with New-IntuneWin32Rule. With -Overwrite an
+        existing app with the same name gets the package as a new content version.
+
+    .PARAMETER IntuneToolsPath
+        The path to IntuneWinAppUtil.exe. When the file does not exist, release v1.8.6 of the tool is
+        downloaded to the per-user tool folder (LocalApplicationData\tcs.intune.packaging) and used.
+
+    .PARAMETER Overwrite
+        Overwrite existing JSON and .intunewin files in OutputFolder.
+
+    .PARAMETER NoJson
+        Do not create the JSON configuration file.
+
+    .PARAMETER NoIntuneWin
+        Do not create the .intunewin package.
+
+    .PARAMETER NoCleanUp
+        Keep the JSON file and .intunewin package after a successful -Publish (they are removed by default).
 
     .OUTPUTS
-        PSObject containing information about the created application package.
+        System.Management.Automation.PSCustomObject
+        JsonPath and IntuneWinPath of the created files ($null for files that were not created or were
+        removed after publishing) and App, the published app when -Publish is used.
+
+    .EXAMPLE
+        New-IntuneApplication -ApplicationName "MyApp" -SourceFiles "C:\Source\MyApp" -MainInstallerFileName "setup.exe" -InstallCommand "setup.exe /S" -UninstallCommand "setup.exe /U" -DetectionRuleConfig @{ Type = 'File'; Path = 'C:\Program Files\MyApp' } -AssignmentType All-Devices
+
+        Creates MyApp.1.0.json and setup.intunewin in the current directory.
+
+    .EXAMPLE
+        New-IntuneApplication -ApplicationName "MyApp" -SourceFiles "C:\Source\installer.msi", "C:\Source\config.xml" -MainInstallerFileName "installer.msi" -OutputFolder "C:\Packages" -Version "2.1" -InstallCommand "msiexec /i installer.msi /qn" -UninstallCommand "msiexec /x installer.msi /qn" -DetectionRuleConfig @{ Type = 'MSI' } -AssignmentType User-Group -AssignmentGroup 'Intune-AG-MyApp-Available' -NoIntuneWin
+
+        Creates only the JSON configuration file for version 2.1.
     #>
-    [CmdletBinding()]
-    [OutputType([PSObject])]
+    [CmdletBinding(SupportsShouldProcess)]
+    [OutputType([PSCustomObject])]
     param(
         [Parameter(Mandatory = $true)]
         [ValidateNotNullOrEmpty()]
@@ -74,43 +130,37 @@ function New-IntuneApplication {
 
         [string]$OutputFolder = $($PWD.Path),
 
-        [ValidateNotNullOrEmpty()]
-        [string]$Description = "# $ApplicationName`nPublisher: $Publisher`nVersion: $Version`nDeveloper: $Developer`n`n$notes",
+        [string]$Description,
 
         [ValidateNotNullOrEmpty()]
-        [string]$Publisher = $Env:USERNAME,
+        [string]$Publisher = [Environment]::UserName,
 
         [string]$Version = "1.0",
 
-        [string]$Developer = $Env:USERNAME,
+        [string]$Developer = [Environment]::UserName,
 
-        [string]$owner = "",
+        [string]$Owner = "",
 
-        [string]$notes = "",
+        [string]$Notes = "",
 
         [ValidateScript({
-                if (Test-Path -Path $_) {
-                    if ($(Get-Item -Path $_).Extension -notin @('.png', '.jpg', '.jpeg')) {
-                        throw "The LogoPath must be a PNG or JPG file."
-                    }
-                    else {
-                        $true
-                    }
-                }
-                else {
+                if (-not (Test-Path -Path $_ -PathType Leaf)) {
                     throw "The LogoPath path does not exist."
+                }
+                if ([System.IO.Path]::GetExtension($_) -notin @('.png', '.jpg', '.jpeg')) {
+                    throw "The LogoPath must be a PNG or JPG file."
                 }
                 $true
             })]
         [string]$LogoPath,
-        
+
         [ValidateSet("User", "System")]
         [string]$InstallFor = "System",
 
         [ValidateSet("basedOnReturnCode", "allow", "suppress", "force")]
         [string]$RestartBehavior = "basedOnReturnCode",
 
-        [bool]$isFeatured = $false,
+        [bool]$IsFeatured = $false,
 
         [Parameter(Mandatory = $true)]
         [ValidateNotNullOrEmpty()]
@@ -121,7 +171,7 @@ function New-IntuneApplication {
         [string]$UninstallCommand,
 
         [hashtable]$RequirementRuleConfig,
-        
+
         [Parameter(Mandatory = $true)]
         [hashtable]$DetectionRuleConfig,
 
@@ -139,7 +189,7 @@ function New-IntuneApplication {
         [switch]$Publish,
 
         [ValidateNotNullOrEmpty()]
-        [string]$IntuneToolsPath = ".\IntuneWinAppUtil.exe",
+        [string]$IntuneToolsPath = (Get-IntuneWinAppUtilPath),
 
         [switch]$Overwrite,
 
@@ -149,201 +199,153 @@ function New-IntuneApplication {
 
         [switch]$NoCleanUp
     )
-    
+
     begin {
         #region PathValidation
-        # Start by validating any paths passed to the function
-        # Requirements Rule Script
-        if ($RequirementRuleType -eq 'Script') {
-            if (-not (Test-Path -Path $RequirementRuleScript)) {
-                Write-Error "The RequirementRuleScript path '$RequirementRuleScript' does not exist."
-                return
-            }
-        }
-        # Detection Rule Script
-        if ($DetectionRuleType -eq 'Script') {
-            if (-not (Test-Path -Path $DetectionRuleScript)) {
-                Write-Error "The DetectionRuleScript path '$DetectionRuleScript' does not exist."
-                return
-            }
-        }
-        # Image Path
         if ($LogoPath) {
-            try {
-                Test-IntuneLogoImage -Path $LogoPath -ErrorAction Stop
-            }
-            catch {
-                Write-Error $_.Exception.Message
-                return
+            if (-not (Test-IntuneLogoImage -Path $LogoPath -ErrorAction Stop)) {
+                throw "The logo '$LogoPath' is not a valid Intune logo image."
             }
         }
         foreach ($File in $SourceFiles) {
             if (-not (Test-Path -Path $File)) {
-                Write-Error "The Source File path '$File' does not exist."
-                return
+                throw "The Source File path '$File' does not exist."
             }
         }
-        if (-not (Test-Path -Path $OutputFolder)) {
-            Write-Error "The Output Folder path '$OutputFolder' does not exist."
-            return
+        if (-not (Test-Path -Path $OutputFolder -PathType Container)) {
+            throw "The Output Folder path '$OutputFolder' does not exist."
         }
         #endregion PathValidation
+
         #region SourceFilesValidation
-        # Validate the MainInstallerFileName is in the list of SourceFiles
-        if ($SourceFiles.count -eq 1 -and (Test-Path -Path $SourceFiles[0] -PathType Container) -eq $false ) {
-            if (Test-Path -Path $MainInstallerFileName -PathType Leaf) {
-                $local:MainInstallerFilePath = Split-Path -Path $MainInstallerFileName -Parent
-                $local:MainInstallerFileName = Split-Path -Path $MainInstallerFileName -Leaf
-            }
-            if ($(Split-Path -Path $SourceFiles[0] -Leaf) -ne $MainInstallerFileName) {
-                Write-Error "The MainInstallerFileName '$MainInstallerFileName' does not exist in the SourceFiles list."
-                return
+        # Find the main installer in the source files (or in the single source folder)
+        if (Test-Path -Path $MainInstallerFileName -PathType Leaf) {
+            $MainInstallerFileName = Split-Path -Path $MainInstallerFileName -Leaf
+        }
+        $MainInstallerFilePath = $null
+        if ($SourceFiles.Count -eq 1 -and (Test-Path -Path $SourceFiles[0] -PathType Container)) {
+            $Found = Get-ChildItem -Path $SourceFiles[0] -Recurse -File | Where-Object { $_.Name -eq $MainInstallerFileName } | Select-Object -First 1
+            if ($Found) {
+                $MainInstallerFilePath = $Found.DirectoryName
             }
         }
-        elseif ($SourceFiles.count -eq 1) {
-            $MainInstallerFileNameFound = $false
-            foreach ($File in $(Get-ChildItem -Path $SourceFiles[0] -Recurse -File | Select-Object -ExpandProperty FullName)) {
-                if ($(Split-Path -Path $File -Leaf) -eq $MainInstallerFileName) {
-                    $MainInstallerFileNameFound = $true
-                    $local:MainInstallerFilePath = Split-Path -Path $File -Parent
+        else {
+            foreach ($File in $SourceFiles) {
+                if ((Split-Path -Path $File -Leaf) -eq $MainInstallerFileName) {
+                    $MainInstallerFilePath = Split-Path -Path (Resolve-Path -Path $File).ProviderPath -Parent
                     break
                 }
             }
         }
-
-        foreach ($File in $SourceFiles) {
-            if ($(Split-Path -Path $File -Leaf) -eq $MainInstallerFileName) {
-                $MainInstallerFileNameFound = $true
-                $local:MainInstallerFilePath = Split-Path -Path $File -Parent
-                break
-            }
-        }
-        if ($MainInstallerFileNameFound -eq $false) {
-            Write-Error "The MainInstallerFileName '$MainInstallerFileName' does not exist in the SourceFiles list."
-            break
+        if (-not $MainInstallerFilePath) {
+            throw "The MainInstallerFileName '$MainInstallerFileName' does not exist in the SourceFiles list."
         }
         #endregion SourceFilesValidation
-        #region IntuneWinAppUtilValidation
-        # Now test if the IntuneWinAppUtil.exe tool is available
-        if ((Test-Path -Path $IntuneToolsPath) -eq $false) {
-            # If not found, download the tool from the internet
-            # Amend this to pull latest version from GitHub - remove -DownloadTag
-            try {
-                # Pinning to v1.8.6 as a know stable release
-                Get-IntunePackagingTool -Path ".\" -Force -DownloadTag "v1.8.6" -ErrorAction Stop
-            }
-            catch {
-                Write-Error $_.Exception.Message
-                return
-            }
+
+        if (-not $PSBoundParameters.ContainsKey('Description')) {
+            $Description = "# $ApplicationName`nPublisher: $Publisher`nVersion: $Version`nDeveloper: $Developer`n`n$Notes"
         }
-        #endregion IntuneWinAppUtilValidation
+
         #region ParameterSplat
-        # Using the parameters passed to the function, create a splat.
+        # Using the parameters passed to the function (and the defaults), create a splat for the JSON file
+        $CommonParameters = [System.Management.Automation.PSCmdlet]::CommonParameters + [System.Management.Automation.PSCmdlet]::OptionalCommonParameters
         $ParameterSplat = @{}
         foreach ($P in $PSBoundParameters.Keys) {
-            $ParameterSplat.Add($P, $PSBoundParameters[$P])
+            if ($P -notin $CommonParameters) {
+                $ParameterSplat[$P] = $PSBoundParameters[$P]
+            }
         }
-        # Removing Verbose, Debug, and ErrorAction parameters
-        $ParameterSplat.Remove('Verbose')
-        $ParameterSplat.Remove('Debug')
-        $ParameterSplat.Remove('ErrorAction')
-        # Manually adding the paremeters that have default values
-        $ParameterSplat.Add('Publisher', $Publisher)
-        $ParameterSplat.Add('Version', $Version)
-        $ParameterSplat.Add('Developer', $Developer)
-        $ParameterSplat.Add('InstallFor', $InstallFor)
-        $ParameterSplat.Add('RestartBehavior', $RestartBehavior)
-        $ParameterSplat.Add('isFeatured', $isFeatured)
-        $ParameterSplat.Add('OutputFolder', $OutputFolder)
-        $ParamVerbose = "$($($ParameterSplat.GetEnumerator() | ForEach-Object { "$($_.Key): $($_.Value)" }) -join "`n")"
-        Write-Verbose "`n$ParamVerbose"
+        $ParameterSplat['MainInstallerFileName'] = $MainInstallerFileName
+        $ParameterSplat['Description'] = $Description
+        $ParameterSplat['Publisher'] = $Publisher
+        $ParameterSplat['Version'] = $Version
+        $ParameterSplat['Developer'] = $Developer
+        $ParameterSplat['InstallFor'] = $InstallFor
+        $ParameterSplat['RestartBehavior'] = $RestartBehavior
+        $ParameterSplat['IsFeatured'] = $IsFeatured
+        $ParameterSplat['OutputFolder'] = $OutputFolder
+        Write-Verbose ("`n" + (($ParameterSplat.GetEnumerator() | ForEach-Object { "$($_.Key): $($_.Value)" }) -join "`n"))
         #endregion ParameterSplat
     }
     process {
+        $JSONOutputPath = $null
+        $IntunewinFullPath = $null
+        $StagingFolder = $null
+
         #region CreateJSON
-        # Create JSON file
-        if ($NoJson -eq $false) {
+        if (-not $NoJson) {
             Write-Verbose "Creating JSON file for $ApplicationName"
-            $JSONOutputPath = "$OutputFolder\$ApplicationName.$Version.json"
-            if ($Overwrite -eq $true -and (Test-Path -Path $JSONOutputPath) -eq $true) {
-                Write-Verbose "Overwriting existing JSON file"
-                Remove-Item -Path $JSONOutputPath -Force -Confirm:$false
+            $JSONOutputPath = Join-Path -Path $OutputFolder -ChildPath "$ApplicationName.$Version.json"
+            if ((Test-Path -Path $JSONOutputPath) -and -not $Overwrite) {
+                throw "The JSON file '$JSONOutputPath' already exists, use -Overwrite to replace it."
             }
-            elseif ((Test-Path -Path $JSONOutputPath) -eq $true) {
-                Write-Error "The JSON file already exists, use -Overwrite to replace it."
-                break
+            if ($PSCmdlet.ShouldProcess($JSONOutputPath, 'Write application JSON')) {
+                New-IntuneAppJSON -AppParams $ParameterSplat | Set-Content -Path $JSONOutputPath -Force -ErrorAction Stop
             }
-            $JSON = New-IntuneAppJSON -AppParams $ParameterSplat
-            $JSON | Out-File -FilePath $JSONOutputPath -Force -Confirm:$false
         }
         #endregion CreateJSON
+
         #region CreateIntuneWin
-        # Create .intunewin file
-        if ($NoIntuneWin -eq $false) {
+        if (-not $NoIntuneWin) {
             Write-Verbose "Creating .intunewin file for $ApplicationName"
-            # If source files are multiple files, create a temp folder and copy the files to it
-            if ($SourceFiles.count -gt 1) {
-                # Create a Temp folder to store SourceFiles
-                $TempFolder = New-Item -Path "$OutputFolder\$ApplicationName.$Version" -ItemType Directory -Force
-                Copy-item -Path $SourceFiles -Destination $TempFolder.FullName -Force -Confirm:$false
-                $SourceFiles = $TempFolder.FullName
+            $MainInstallerFileFullPath = Join-Path -Path $MainInstallerFilePath -ChildPath $MainInstallerFileName
+            $IntunewinFullPath = Join-Path -Path $OutputFolder -ChildPath "$([System.IO.Path]::GetFileNameWithoutExtension($MainInstallerFileName)).intunewin"
+            if ((Test-Path -Path $IntunewinFullPath) -and -not $Overwrite) {
+                throw "The .intunewin file '$IntunewinFullPath' already exists, use -Overwrite to replace it."
             }
-            else {
-                if ((Test-Path -Path $SourceFiles[0] -PathType Container) -eq $false) {
-                    $SourceFiles = Split-Path -Path $SourceFiles[0] -Parent
+            if ($PSCmdlet.ShouldProcess($IntunewinFullPath, 'Create .intunewin package')) {
+                # IntuneWinAppUtil.exe needs one source folder: copy multiple source files to a staging folder
+                if ($SourceFiles.Count -gt 1) {
+                    $StagingFolder = New-Item -Path (Join-Path -Path $OutputFolder -ChildPath "$ApplicationName.$Version") -ItemType Directory -Force -ErrorAction Stop
+                    Copy-Item -Path $SourceFiles -Destination $StagingFolder.FullName -Force -ErrorAction Stop
+                    $SourceFolder = $StagingFolder.FullName
+                    $MainInstallerFileFullPath = Join-Path -Path $SourceFolder -ChildPath $MainInstallerFileName
                 }
-            }
-            $IntunewinFullPath = Join-Path -Path $OutputFolder -ChildPath "$((Get-Item -Path "$MainInstallerFilePath\$MainInstallerFileName" -ErrorAction SilentlyContinue).BaseName).intunewin"
-            $ExistingIntunewinTest = Test-Path -Path $IntunewinFullPath
-            $MainInstallerFileFullPath = "$MainInstallerFilePath\$MainInstallerFileName"
-            $CreateIntuneWin = $true
-            if ($Overwrite -eq $true -and $ExistingIntunewinTest -eq $true) {
-                Write-Verbose "Overwriting existing .intunewin file"
-                Remove-Item -Path $IntunewinFullPath -Force -Confirm:$false
-            }
-            elseif ($ExistingIntunewinTest -eq $true) {
-                Write-Error "The .intunewin file already exists, use -Overwrite to replace it."
-                $CreateIntuneWin = $false
-                return       
-            }
-            if ($CreateIntuneWin -eq $true) {
-                try {
-                    Start-Process -FilePath $IntuneToolsPath -ArgumentList "-c $SourceFiles -o $OutputFolder -s $MainInstallerFileFullPath -q" -Wait -WindowStyle Hidden -ErrorAction Stop | Out-Null
+                elseif (Test-Path -Path $SourceFiles[0] -PathType Container) {
+                    $SourceFolder = (Resolve-Path -Path $SourceFiles[0]).ProviderPath
                 }
-                catch {
-                    Write-Error $_.Exception.Message
-                    return
+                else {
+                    $SourceFolder = $MainInstallerFilePath
+                }
+
+                if (-not (Test-Path -Path $IntuneToolsPath -PathType Leaf)) {
+                    # Pinned to v1.8.6 as a known stable release
+                    $IntuneToolsPath = (Get-IntunePackagingTool -Path (Split-Path -Path (Get-IntuneWinAppUtilPath) -Parent) -Force -DownloadTag 'v1.8.6' -ErrorAction Stop).FullName
+                }
+                if (Test-Path -Path $IntunewinFullPath) {
+                    Remove-Item -Path $IntunewinFullPath -Force -ErrorAction Stop
+                }
+                $Result = Invoke-Executable -FilePath $IntuneToolsPath -Arguments "-c `"$SourceFolder`" -s `"$MainInstallerFileFullPath`" -o `"$OutputFolder`" -q"
+                if ($Result.ExitCode -ne 0 -or -not (Test-Path -Path $IntunewinFullPath)) {
+                    throw "IntuneWinAppUtil.exe did not create '$IntunewinFullPath' (exit code $($Result.ExitCode)). $($Result.StandardError)"
                 }
             }
         }
         #endregion CreateIntuneWin
-        #region PublishIntune
-        # Publish to Intune
-        if ($Publish -eq $true) {
-            Write-Verbose "Publishing $ApplicationName to Intune"
-            try {
-                
+
+        $App = $null
+        if ($Publish) {
+            if ($NoJson -or $NoIntuneWin) {
+                throw 'Publish needs both the JSON file and the .intunewin package; do not combine it with -NoJson or -NoIntuneWin.'
             }
-            catch {
-                Write-Error $_.Exception.Message
-                return
+            if ($PSCmdlet.ShouldProcess($ApplicationName, 'Publish to Intune')) {
+                $App = Publish-IntuneAppPackage -IntuneAppJSONPath $JSONOutputPath -IntuneWinPath $IntunewinFullPath -Force:$Overwrite -ErrorAction Stop
+                if (-not $NoCleanUp) {
+                    Write-Verbose 'Removing the published JSON file and .intunewin package.'
+                    Remove-Item -Path $JSONOutputPath, $IntunewinFullPath -Force -ErrorAction SilentlyContinue
+                    if ($StagingFolder) {
+                        Remove-Item -Path $StagingFolder.FullName -Recurse -Force -ErrorAction SilentlyContinue
+                    }
+                    $JSONOutputPath = $null
+                    $IntunewinFullPath = $null
+                }
             }
         }
-    }
-    end {
-        # Cleanup
-        if ($NoCleanUp -eq $false -and $Publish -eq $true) {
-            Write-Verbose "Cleaning up temporary files"
-            if ($SourceFiles.count -gt 1) {
-                Remove-Item -Path $TempFolder.FullName -Recurse -Force -Confirm:$false
-            }
-            if ($NoJson -eq $false) {
-                Remove-Item -Path "$OutputFolder\$ApplicationName.$Version.json" -Force -Confirm:$false
-            }
-            if ($NoIntuneWin -eq $false) {
-                Remove-Item -Path $IntunewinFullPath -Force -Confirm:$false
-            }
+
+        [PSCustomObject]@{
+            JsonPath      = $JSONOutputPath
+            IntuneWinPath = $IntunewinFullPath
+            App           = $App
         }
     }
 }
