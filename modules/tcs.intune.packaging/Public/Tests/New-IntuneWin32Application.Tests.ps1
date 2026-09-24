@@ -78,7 +78,10 @@ Describe 'New-IntuneWin32Application' {
 
     It 'Requires a detection rule' {
         $requirement = @{ '@odata.type' = '#microsoft.graph.win32LobAppRegistryRule'; ruleType = 'requirement' }
-        { New-IntuneWin32Application @script:Common -Rules $requirement -Confirm:$false } | Should -Throw '*detection rule*'
+        # Windows PowerShell 5.1 rejects a parameter given both in a splat and explicitly, so replace it in a copy
+        $params = $script:Common.Clone()
+        $params.Rules = $requirement
+        { New-IntuneWin32Application @params -Confirm:$false } | Should -Throw '*detection rule*'
         Should -Invoke -ModuleName tcs.intune.packaging Invoke-MgGraphRequest -Times 0 -Exactly
     }
 
