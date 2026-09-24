@@ -49,7 +49,8 @@ Describe 'New-IntuneWin32Application' {
         $app.committedContentVersion | Should -Be '1'
         Should -Invoke -ModuleName tcs.intune.packaging Publish-IntuneWin32AppContent -Times 1 -Exactly -ParameterFilter { $AppId -eq 'app-1' -and $IntuneWinPath -eq $script:Package }
         Should -Invoke -ModuleName tcs.intune.packaging Invoke-MgGraphRequest -Times 1 -Exactly -ParameterFilter {
-            $body = $Body | ConvertFrom-Json
+            # Pester evaluates this filter for every recorded call; GET calls have no body
+            $body = if ($Body) { $Body | ConvertFrom-Json } else { $null }
             $Method -eq 'POST' -and $Uri -eq 'v1.0/deviceAppManagement/mobileApps' -and $ContentType -eq 'application/json' -and
             $body.'@odata.type' -eq '#microsoft.graph.win32LobApp' -and
             $body.displayName -eq 'MyApp' -and $body.publisher -eq 'Contoso' -and
@@ -69,7 +70,8 @@ Describe 'New-IntuneWin32Application' {
         [System.IO.File]::WriteAllBytes($icon, [byte[]](1, 2, 3))
         $null = New-IntuneWin32Application @script:Common -IconFilePath $icon -Confirm:$false
         Should -Invoke -ModuleName tcs.intune.packaging Invoke-MgGraphRequest -Times 1 -Exactly -ParameterFilter {
-            $body = $Body | ConvertFrom-Json
+            # Pester evaluates this filter for every recorded call; GET calls have no body
+            $body = if ($Body) { $Body | ConvertFrom-Json } else { $null }
             $Method -eq 'POST' -and $body.largeIcon.type -eq 'image/png' -and $body.largeIcon.value -eq 'AQID'
         }
     }
@@ -111,7 +113,8 @@ Describe 'New-IntuneWin32Application' {
         } -ParameterFilter { $Method -eq 'GET' -and $Uri -eq 'v1.0/deviceAppManagement/mobileApps/old-id' }
         $null = New-IntuneWin32Application -ExistingPackage 'Old App | old-id' -Name 'New App' -IntuneWinFilePath $script:Package -Confirm:$false
         Should -Invoke -ModuleName tcs.intune.packaging Invoke-MgGraphRequest -Times 1 -Exactly -ParameterFilter {
-            $body = $Body | ConvertFrom-Json
+            # Pester evaluates this filter for every recorded call; GET calls have no body
+            $body = if ($Body) { $Body | ConvertFrom-Json } else { $null }
             $Method -eq 'POST' -and $body.displayName -eq 'New App' -and $body.description -eq 'Old description' -and
             $body.installCommandLine -eq 'old-install.cmd' -and $body.rules[0].fileOrFolderName -eq 'app.exe' -and @($body.returnCodes).Count -eq 1
         }
