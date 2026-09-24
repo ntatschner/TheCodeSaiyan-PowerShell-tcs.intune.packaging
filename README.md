@@ -1,7 +1,101 @@
-# TheCodeSaiyan-PowerShell-tcs.intune.packaging
+# tcs.intune.packaging
 
-[![Build](https://img.shields.io/github/actions/workflow/status/ntatschner/TheCodeSaiyan-PowerShell-tcs.intune.packaging/ci-validate.yml?branch=main&label=Build)](https://github.com/ntatschner/TheCodeSaiyan-PowerShell-tcs.intune.packaging/actions/workflows/ci-validate.yml)
-[![Docs](https://img.shields.io/github/actions/workflow/status/ntatschner/TheCodeSaiyan-PowerShell-tcs.intune.packaging/generate-docs.yml?branch=main&label=Docs)](https://github.com/ntatschner/TheCodeSaiyan-PowerShell-tcs.intune.packaging/actions/workflows/generate-docs.yml)
-[![Publish](https://img.shields.io/github/actions/workflow/status/ntatschner/TheCodeSaiyan-PowerShell-tcs.intune.packaging/publish-to-psgallery.yml?branch=main&label=Publish)](https://github.com/ntatschner/TheCodeSaiyan-PowerShell-tcs.intune.packaging/actions/workflows/publish-to-psgallery.yml)
+PowerShell functions to build, package and deploy applications and configuration packages for
+Microsoft Intune: Win32 `.intunewin` packages, Application Packaging Framework (APF) installer
+packages, detection/requirement rules and deployment groups.
 
-PowerShell helpers for Intune packaging and deployment automation.
+Part of the tcs module suite; built on [tcs.core](https://github.com/ntatschner/TheCodeSaiyan-PowerShell-tcs.core).
+
+## Requirements
+
+- **Windows.** The module uses the Windows Installer COM object, Authenticode signing and
+  Microsoft's `IntuneWinAppUtil.exe`. It runs on Windows PowerShell 5.1 and PowerShell 7 on Windows.
+- **tcs.core 0.3.0 or later** (installed automatically as a required module).
+- Optional, only for the commands that talk to Microsoft Entra ID / Intune:
+  - `Microsoft.Entra` (`New-ApplicationDeploymentGroup -CreateGroups`)
+  - `Microsoft.Graph.Identity.DirectoryManagement` (`-AdminUnitId`)
+  - `Microsoft.Graph.Authentication` and `Microsoft.Graph.Devices.CorporateManagement`
+    (`Publish-IntuneAppPackage`, `New-IntuneWin32Application`)
+
+## Installation
+
+```powershell
+Install-Module -Name tcs.intune.packaging -Scope CurrentUser
+```
+
+From source:
+
+```powershell
+git clone https://github.com/ntatschner/TheCodeSaiyan-PowerShell-tcs.intune.packaging.git
+Import-Module ./TheCodeSaiyan-PowerShell-tcs.intune.packaging/modules/tcs.intune.packaging/tcs.intune.packaging.psd1
+```
+
+## Functions
+
+| Function | Purpose |
+| --- | --- |
+| `New-APFDeployment` | Creates an APF package folder for an MSI/EXE installer (installer scripts, config, detection script) and optionally a `.intunewin` |
+| `New-APFConfigDeployment` | Creates APF configuration packages: Registry, Files, PowerShellProfiles, Script-OS, WindowsFeature, StandAlone-Exe, Standalone-Application |
+| `New-IntuneWin32AppPackage` | Wraps a source folder into a `.intunewin` package with `IntuneWinAppUtil.exe` |
+| `New-IntuneApplication` | Writes the application JSON configuration and the `.intunewin` package |
+| `New-IntuneWin32Rule` | Builds a Win32 app detection or requirement rule (file, registry, script, MSI) |
+| `New-ApplicationDeploymentGroup` | Generates (and optionally creates in Entra ID) the Available/Required/Test/Phase1 groups |
+| `Get-IntunePackagingTool` | Downloads `IntuneWinAppUtil.exe` from Microsoft's GitHub releases |
+| `Get-MSIProperty` | Reads the Property table (ProductName, ProductVersion, ProductCode ...) of an MSI |
+| `ConvertTo-SignedScript` | Signs PowerShell files with a PFX code-signing certificate |
+| `Invoke-Executable` | Runs an executable and returns its exit code and output |
+| `Start-DownloadFile` | Downloads a file to a folder |
+| `New-PackageJSON` | Writes package metadata JSON for a source folder |
+| `Publish-IntuneAppPackage` | Checks a package against the connected tenant. **Uploading is not implemented yet.** |
+| `New-IntuneWin32Application` | Builds the properties of a new or cloned Win32 app. **Creating the app is not implemented yet.** |
+
+Aliases kept for earlier versions: `Get-MSIProperties`, `New-ApplicationDeploymentGroups`.
+
+Run `Get-Help <function> -Full` for parameters and examples.
+
+`IntuneWinAppUtil.exe` is stored per user in `%LOCALAPPDATA%\tcs.intune.packaging` (a copy in the
+module folder from an earlier version is still used), so the module works when installed for all users.
+
+## Configuration
+
+Settings are handled by tcs.core. The settings file is
+`<ApplicationData>/PowerShell/Config/tcs.intune.packaging/Module.Config.json` and is created with
+the defaults the first time the module loads. Change it with `Set-ModuleConfig`:
+
+```powershell
+Set-ModuleConfig -ModuleName tcs.intune.packaging -UpdateWarning $false   # no update warnings
+Set-ModuleConfig -ModuleName tcs.intune.packaging -Telemetry $false       # no telemetry
+```
+
+| Setting | Default | Meaning |
+| --- | --- | --- |
+| `UpdateWarning` | `true` | Warn on import when a newer version is in the PowerShell Gallery (checked at most once a day) |
+| `UpdateCheckIntervalHours` | `24` | How often the gallery is checked |
+| `Telemetry` | `true` | Send anonymous usage telemetry |
+
+Environment variables `TCS_TELEMETRY_OPTOUT=1` and `TCS_SKIP_UPDATE_CHECK=1` turn telemetry and
+the update check off for every tcs module; `TCS_CONFIG_ROOT` moves the settings folder.
+
+## Privacy and telemetry
+
+tcs modules send anonymous usage telemetry to help find failing commands. Telemetry is on by
+default and a notice is shown the first time a module is loaded. Nothing is sent until a
+telemetry endpoint is configured.
+
+Each event contains: time (UTC), module and command name, module version, duration, success,
+the exception **type** on failure, PowerShell version and edition, OS family, PowerShell host
+name, and a random installation ID created on first use.
+
+It **never** contains: user names, machine names, file paths, hardware serial numbers, IP-based
+identifiers, command arguments or error messages.
+
+Turn it off with `Set-ModuleConfig -ModuleName tcs.intune.packaging -Telemetry $false`, or for all
+tcs modules with the environment variable `TCS_TELEMETRY_OPTOUT=1`.
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md). Report security issues as described in [SECURITY.md](SECURITY.md).
+
+## Author
+
+**Nigel Tatschner** - TheCodeSaiyan ([@ntatschner](https://github.com/ntatschner))
