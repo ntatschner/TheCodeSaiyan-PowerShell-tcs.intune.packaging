@@ -3,6 +3,7 @@ BeforeDiscovery {
     $ModuleRoot = Join-Path -Path $RepoRoot -ChildPath 'modules/tcs.intune.packaging'
     # Only the top level of Public/ holds exported functions; Public/Templates holds installer scripts
     $PublicFunctions = @(Get-ChildItem -Path (Join-Path $ModuleRoot 'Public') -Filter '*.ps1' -File | ForEach-Object BaseName | ForEach-Object { @{ Name = $_ } })
+    $ExportedFunctions = @((Import-PowerShellDataFile -Path (Join-Path $ModuleRoot 'tcs.intune.packaging.psd1')).FunctionsToExport | ForEach-Object { @{ Name = $_ } })
 }
 
 BeforeAll {
@@ -88,6 +89,26 @@ Describe 'Help for <Name>' -ForEach $PublicFunctions {
             $parameterHelp = $help.Parameters.Parameter | Where-Object Name -EQ $parameter
             ($parameterHelp.Description | Out-String).Trim() | Should -Not -BeNullOrEmpty -Because "parameter '$parameter' should be documented"
         }
+    }
+}
+
+Describe 'Telemetry for <Name>' -ForEach $ExportedFunctions {
+    # Coverage guard: every exported command reports a Start and an End event through tcs.core.
+    # No command is excluded.
+    BeforeAll {
+        $definition = (Get-Command -Name $Name -Module tcs.intune.packaging).Definition
+    }
+
+    It 'Reports a Start event' {
+        $definition | Should -Match 'Invoke-TelemetryCollection\s[^\r\n]*-Stage\s+[''"]?Start\b'
+    }
+
+    It 'Reports an End event' {
+        $definition | Should -Match 'Invoke-TelemetryCollection\s[^\r\n]*-Stage\s+[''"]?End\b'
+    }
+
+    It 'Reports a failed End event' {
+        $definition | Should -Match 'Invoke-TelemetryCollection\s[^\r\n]*-Stage\s+[''"]?End[''"]?\s[^\r\n]*-Failed\s+\$true'
     }
 }
 

@@ -1,3 +1,4 @@
+# Keep this name: create-version-tag.yml and generate-docs.yml run after 'CI Validate'.
 name: 'CI Validate'
 
 on:
@@ -35,6 +36,7 @@ jobs:
     with:
       module-name: 'tcs.intune.packaging'
       module-path: 'modules/tcs.intune.packaging'
+      smoke-test-script-path: '.github/scripts/module-smoke-tests.ps1'
       install-modules: |
         tcs.core
 

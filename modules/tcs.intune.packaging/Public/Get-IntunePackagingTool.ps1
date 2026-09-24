@@ -59,64 +59,78 @@ function Get-IntunePackagingTool {
 
         [switch]$Force
     )
-    $RepositoryUrl = 'https://github.com/microsoft/Microsoft-Win32-Content-Prep-Tool'
-    switch ($PSCmdlet.ParameterSetName) {
-        'DownloadTag' {
-            Write-Verbose "Using the specified download tag '$DownloadTag'."
-            $DownloadUrl = "$RepositoryUrl/archive/refs/tags/$DownloadTag.zip"
+    $TelemetryArgs = @{
+        ModuleName    = $MyInvocation.MyCommand.Module.Name
+        ModuleVersion = [string]$MyInvocation.MyCommand.Module.Version
+        CommandName   = $MyInvocation.MyCommand.Name
+        ExecutionID   = [guid]::NewGuid().ToString()
+    }
+    Invoke-TelemetryCollection @TelemetryArgs -Stage Start -ClearTimer
+    try {
+        $RepositoryUrl = 'https://github.com/microsoft/Microsoft-Win32-Content-Prep-Tool'
+        switch ($PSCmdlet.ParameterSetName) {
+            'DownloadTag' {
+                Write-Verbose "Using the specified download tag '$DownloadTag'."
+                $DownloadUrl = "$RepositoryUrl/archive/refs/tags/$DownloadTag.zip"
+            }
+            'Latest' {
+                Write-Verbose 'Getting the latest release of the Microsoft Win32 Content Prep Tool.'
+                try {
+                    $LatestRelease = Invoke-RestMethod -Uri "$RepositoryUrl/releases/latest" -Headers @{ Accept = 'application/json' } -UseBasicParsing -ErrorAction Stop
+                }
+                catch {
+                    throw "Failed to get the latest release of the Microsoft Win32 Content Prep Tool: $($_.Exception.Message)"
+                }
+                if ([string]::IsNullOrEmpty($LatestRelease.tag_name)) {
+                    throw 'Failed to get the latest release of the Microsoft Win32 Content Prep Tool: the response did not contain a tag name.'
+                }
+                Write-Verbose "Latest tag: $($LatestRelease.tag_name)"
+                $DownloadUrl = "$RepositoryUrl/archive/refs/tags/$($LatestRelease.tag_name).zip"
+            }
         }
-        'Latest' {
-            Write-Verbose 'Getting the latest release of the Microsoft Win32 Content Prep Tool.'
+
+        $WorkFolder = Join-Path -Path ([System.IO.Path]::GetTempPath()) -ChildPath "IntuneWinAppUtil-$([guid]::NewGuid().ToString('N'))"
+        $DownloadPath = Join-Path -Path $WorkFolder -ChildPath 'IntuneWinAppUtil.zip'
+        $ExtractionPath = Join-Path -Path $WorkFolder -ChildPath 'extracted'
+        try {
+            $null = New-Item -Path $WorkFolder -ItemType Directory -Force -ErrorAction Stop
+
+            Write-Verbose "Downloading '$DownloadUrl' to '$DownloadPath'."
             try {
-                $LatestRelease = Invoke-RestMethod -Uri "$RepositoryUrl/releases/latest" -Headers @{ Accept = 'application/json' } -UseBasicParsing -ErrorAction Stop
+                Invoke-WebRequest -Uri $DownloadUrl -OutFile $DownloadPath -UseBasicParsing -ErrorAction Stop
             }
             catch {
-                throw "Failed to get the latest release of the Microsoft Win32 Content Prep Tool: $($_.Exception.Message)"
+                throw "Failed to download the Microsoft Win32 Content Prep Tool from $($DownloadUrl): $($_.Exception.Message)"
             }
-            if ([string]::IsNullOrEmpty($LatestRelease.tag_name)) {
-                throw 'Failed to get the latest release of the Microsoft Win32 Content Prep Tool: the response did not contain a tag name.'
+
+            Write-Verbose "Extracting '$DownloadPath'."
+            Expand-Archive -Path $DownloadPath -DestinationPath $ExtractionPath -Force -ErrorAction Stop
+
+            $ToolFile = Get-ChildItem -Path $ExtractionPath -Recurse -File -Filter 'IntuneWinAppUtil.exe' -ErrorAction Stop | Select-Object -First 1
+            if (-not $ToolFile) {
+                throw "IntuneWinAppUtil.exe was not found in the archive downloaded from $DownloadUrl."
             }
-            Write-Verbose "Latest tag: $($LatestRelease.tag_name)"
-            $DownloadUrl = "$RepositoryUrl/archive/refs/tags/$($LatestRelease.tag_name).zip"
+
+            if (-not (Test-Path -Path $Path -PathType Container)) {
+                $null = New-Item -Path $Path -ItemType Directory -Force -ErrorAction Stop
+            }
+            $Destination = Join-Path -Path $Path -ChildPath $ToolFile.Name
+            if ((Test-Path -Path $Destination -PathType Leaf) -and -not $Force) {
+                throw "'$Destination' already exists. Use -Force to overwrite it."
+            }
+            Copy-Item -LiteralPath $ToolFile.FullName -Destination $Destination -Force -ErrorAction Stop
+            Write-Verbose "IntuneWinAppUtil.exe has been copied to '$Path'."
+            Get-Item -LiteralPath $Destination
         }
+        finally {
+            if (Test-Path -Path $WorkFolder) {
+                Remove-Item -Path $WorkFolder -Recurse -Force -ErrorAction SilentlyContinue
+            }
+        }
+        Invoke-TelemetryCollection @TelemetryArgs -Stage End
     }
-
-    $WorkFolder = Join-Path -Path ([System.IO.Path]::GetTempPath()) -ChildPath "IntuneWinAppUtil-$([guid]::NewGuid().ToString('N'))"
-    $DownloadPath = Join-Path -Path $WorkFolder -ChildPath 'IntuneWinAppUtil.zip'
-    $ExtractionPath = Join-Path -Path $WorkFolder -ChildPath 'extracted'
-    try {
-        $null = New-Item -Path $WorkFolder -ItemType Directory -Force -ErrorAction Stop
-
-        Write-Verbose "Downloading '$DownloadUrl' to '$DownloadPath'."
-        try {
-            Invoke-WebRequest -Uri $DownloadUrl -OutFile $DownloadPath -UseBasicParsing -ErrorAction Stop
-        }
-        catch {
-            throw "Failed to download the Microsoft Win32 Content Prep Tool from $($DownloadUrl): $($_.Exception.Message)"
-        }
-
-        Write-Verbose "Extracting '$DownloadPath'."
-        Expand-Archive -Path $DownloadPath -DestinationPath $ExtractionPath -Force -ErrorAction Stop
-
-        $ToolFile = Get-ChildItem -Path $ExtractionPath -Recurse -File -Filter 'IntuneWinAppUtil.exe' -ErrorAction Stop | Select-Object -First 1
-        if (-not $ToolFile) {
-            throw "IntuneWinAppUtil.exe was not found in the archive downloaded from $DownloadUrl."
-        }
-
-        if (-not (Test-Path -Path $Path -PathType Container)) {
-            $null = New-Item -Path $Path -ItemType Directory -Force -ErrorAction Stop
-        }
-        $Destination = Join-Path -Path $Path -ChildPath $ToolFile.Name
-        if ((Test-Path -Path $Destination -PathType Leaf) -and -not $Force) {
-            throw "'$Destination' already exists. Use -Force to overwrite it."
-        }
-        Copy-Item -LiteralPath $ToolFile.FullName -Destination $Destination -Force -ErrorAction Stop
-        Write-Verbose "IntuneWinAppUtil.exe has been copied to '$Path'."
-        Get-Item -LiteralPath $Destination
-    }
-    finally {
-        if (Test-Path -Path $WorkFolder) {
-            Remove-Item -Path $WorkFolder -Recurse -Force -ErrorAction SilentlyContinue
-        }
+    catch {
+        Invoke-TelemetryCollection @TelemetryArgs -Stage End -Failed $true -Exception $_
+        throw
     }
 }

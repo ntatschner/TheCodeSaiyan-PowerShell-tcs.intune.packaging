@@ -44,3 +44,26 @@ Describe 'New-PackageJSON' {
         { New-PackageJSON -PackageName 'MyApp' -Version '1.0' -Description 'D' -Author 'IT' -SourceDirectory (Join-Path -Path $TestDrive -ChildPath 'nope') -MainInstaller 'setup.exe' } | Should -Throw
     }
 }
+
+Describe 'New-PackageJSON telemetry' {
+    BeforeEach {
+        Mock -ModuleName tcs.intune.packaging Invoke-TelemetryCollection { }
+        $Source = Join-Path -Path $TestDrive -ChildPath ([guid]::NewGuid().ToString())
+        $null = New-Item -Path $Source -ItemType Directory -Force
+        Set-Content -Path (Join-Path -Path $Source -ChildPath 'setup.exe') -Value 'x'
+    }
+
+    It 'Reports Start and a successful End and returns only the file' {
+        $output = @(New-PackageJSON -PackageName 'MyApp' -Version '1.0' -Description 'D' -Author 'IT' -SourceDirectory $Source -MainInstaller 'setup.exe')
+        $output.Count | Should -Be 1
+        $output[0] | Should -BeOfType ([System.IO.FileInfo])
+        Should -Invoke -ModuleName tcs.intune.packaging Invoke-TelemetryCollection -Times 1 -Exactly -ParameterFilter { $Stage -eq 'Start' -and $CommandName -eq 'New-PackageJSON' }
+        Should -Invoke -ModuleName tcs.intune.packaging Invoke-TelemetryCollection -Times 1 -Exactly -ParameterFilter { $Stage -eq 'End' -and -not $Failed }
+    }
+
+    It 'Reports a failed End when the file cannot be written and still throws' {
+        Mock -ModuleName tcs.intune.packaging Set-Content { throw 'disk full' }
+        { New-PackageJSON -PackageName 'MyApp' -Version '1.0' -Description 'D' -Author 'IT' -SourceDirectory $Source -MainInstaller 'setup.exe' } | Should -Throw '*disk full*'
+        Should -Invoke -ModuleName tcs.intune.packaging Invoke-TelemetryCollection -Times 1 -Exactly -ParameterFilter { $Stage -eq 'End' -and $Failed -eq $true }
+    }
+}
