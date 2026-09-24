@@ -7,6 +7,92 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-09-24
+
+### Security
+- APF detection scripts: the package name was inserted into a double-quoted string
+  (`$AppName = "##NAME_TEMPLATE"`), so a name containing `"` or `$(...)` became code in a script that
+  runs as SYSTEM. The placeholders are now single-quoted and values are inserted with `'` doubled;
+  the filled-in script is parsed before it is written.
+- APF package names are validated before they are used as folder names: `.`, `..`, path separators,
+  wildcard characters (`[` `]`) and characters Windows does not allow in file names are rejected, and
+  the package folder must be a direct child of the destination folder. Folders are deleted with
+  `-LiteralPath`.
+- `Get-IntunePackagingTool` refuses a downloaded `IntuneWinAppUtil.exe` unless it has a valid
+  Authenticode signature from Microsoft Corporation (Windows). The new `-ExpectedSha256` also checks
+  the hash; it is required where signatures cannot be checked.
+- `New-IntuneWin32AppPackage` and `New-IntuneApplication` no longer download `IntuneWinAppUtil.exe`
+  without asking; use the new `-AllowDownload` to download without the question.
+
+### Added
+- Assignments: `Publish-IntuneAppPackage` (and `New-IntuneApplication -Publish`) assign the app as set
+  by `AssignmentType`, `AssignmentGroup`, the new `AssignmentIntent` (required, available or
+  uninstall) and `FilterRuleType`/`FilterRule` (an existing assignment filter by name or ID). These
+  come from the JSON file or from new `Publish-IntuneAppPackage` parameters; `-NoAssignment` skips
+  it. Groups can be given by ID or display name. Existing assignments are kept.
+- `Get-IntuneWin32App`, `Set-IntuneWin32App`, `Remove-IntuneWin32App`,
+  `Add-IntuneWin32AppSupersedence`, `Add-IntuneWin32AppDependency` and `Get-IntuneWinPackageInfo`.
+- `Get-IntunePackagingTool -ExpectedSha256`; `-AllowDownload` on `New-IntuneWin32AppPackage` and
+  `New-IntuneApplication`.
+
+### Changed
+- `ConvertTo-SignedScript` is renamed to `Set-ScriptSignature`; `ConvertTo-SignedScript` remains as
+  an alias.
+- `Publish-IntuneAppPackage -Force` also updates the existing app's properties (names, notes and
+  version, command lines, install experience, logo, rules, setup file) from the JSON file after the
+  new content is committed; before, only the content was replaced.
+- The APF commands print install commands that start the 64-bit Windows PowerShell from the 32-bit
+  Intune Management Extension:
+  `%windir%\sysnative\WindowsPowerShell\v1.0\powershell.exe -NoProfile -ExecutionPolicy RemoteSigned -WindowStyle Hidden -File Intune-I-MainInstaller.ps1`
+  (and `-Uninstall`). The template READMEs, which said `-ExecutionPolicy Bypass`, and the about help
+  now give the same commands. (`New-IntuneApplication`/`Publish-IntuneAppPackage` use the command
+  lines you pass; `New-PackageJSON` has none.)
+- `New-ApplicationDeploymentGroup -CreateGroups` returns one object per created or existing group
+  (with `Id` and `Status`) instead of status strings; progress is verbose output. Administrative
+  unit and member failures are errors instead of warnings. The command stays in this module; moving
+  it to another tcs module is a later decision.
+- `New-IntuneWin32AppPackage` reports failures as errors instead of warnings (missing folders, setup
+  file or tool and tool failures are terminating; an existing package without `-Force` is a
+  non-terminating error) and telemetry records them as failures. `Name`, `FileName`, `SetupFile` and
+  `UnencryptedContentSize` now always come from the package's `Detection.xml` (the optional
+  IntuneWin32App module is no longer used), so `FileName` is `IntunePackage.intunewin`. The tool
+  runs with redirected output instead of a separate window.
+- `IntuneWinAppUtil.exe` is run by one shared private helper for all packaging commands; automatic
+  downloads use release v1.8.6 (the APF commands used the latest release).
+- Byte-identical template scripts (`Write-DeploymentLog.ps1` and two detection scripts) are kept once
+  in `Public/Templates/_shared` and copied into packages when they are built. Packages contain the
+  same files as before.
+- `New-IntuneApplication` no longer writes its command options (`Publish`, `Overwrite`, `NoJson`,
+  `NoIntuneWin`, `NoCleanUp`, `IntuneToolsPath`, `AllowDownload`) into the JSON file.
+- `Invoke-Executable` stays exported for now.
+
+### Deprecated
+- `New-PackageJSON` (nothing reads its output; `Publish-IntuneAppPackage` reads the
+  `New-IntuneApplication` JSON) and `Start-DownloadFile` (not used by the module) write a
+  deprecation warning and may be removed in a future version.
+
+### Fixed
+- `New-APFConfigDeployment` with pipeline input read its dynamic parameters in `begin`, before
+  pipeline binding: the name was empty, so the destination folder itself became the package folder
+  and confirming the overwrite deleted it. The parameters are now read per input object.
+- Declining the overwrite prompt in `New-APFConfigDeployment` carried on building the package in the
+  existing folder; the deployment is now skipped with a warning, as in `New-APFDeployment`.
+- `New-IntuneApplication` with several source files copied folders without their contents, and left
+  its staging folder in the output folder unless `-Publish` was used. Folders are now copied
+  recursively to a temporary staging folder that is always removed.
+- `New-IntuneApplication -Publish` with `-NoJson` or `-NoIntuneWin` is rejected before any file is
+  written, and assignment settings are checked before anything is built.
+- `New-IntuneWin32AppPackage` checked for the tool with `-or` where `-and` was needed, so a tool that
+  only a literal path test found was downloaded again.
+- `New-ApplicationDeploymentGroup` treated a failed group lookup as "the group does not exist" and
+  created the group, possibly as a duplicate; the group is now skipped with an error.
+- The quoted paths passed to `IntuneWinAppUtil.exe` no longer end with a backslash, which escaped the
+  closing quote.
+
+### Removed
+- The unused private helpers `New-Win32ApplicationInfo`, `New-Win32InstallExperience`,
+  `New-Win32Installation`, `New-Win32Requirement` and `New-Win32ReturnCode` and their tests.
+
 ## [0.4.1] - 2026-09-24
 
 ### Fixed

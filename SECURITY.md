@@ -16,7 +16,13 @@ You should get a first response within 7 days.
 
 ## Scope notes
 
-- `ConvertTo-SignedScript` takes the PFX password as a `SecureString` and never writes it anywhere.
+- `Set-ScriptSignature` (formerly `ConvertTo-SignedScript`) takes the PFX password as a
+  `SecureString` and never writes it anywhere.
+- `IntuneWinAppUtil.exe` is only downloaded after confirmation (or with `-AllowDownload`) and is
+  refused unless it has a valid Authenticode signature from Microsoft Corporation (Windows) and, with
+  `Get-IntunePackagingTool -ExpectedSha256`, the expected hash.
+- Package names are written into the APF detection scripts as single-quoted strings, so a name cannot
+  run as code; names that are not safe folder names are rejected.
 - The installer templates run as SYSTEM or as the signed-in user on managed devices. Review any
   custom code you add to `Intune-Pre-Install.ps1` / `Intune-Post-Install.ps1` accordingly.
 - Telemetry (through tcs.core) never sends user names, machine names, paths, hardware identifiers

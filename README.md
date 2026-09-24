@@ -15,8 +15,9 @@ Part of the tcs module suite; built on [tcs.core](https://github.com/ntatschner/
   - `Microsoft.Entra` (`New-ApplicationDeploymentGroup -CreateGroups`)
   - `Microsoft.Graph.Identity.DirectoryManagement` (`-AdminUnitId`)
   - `Microsoft.Graph.Authentication` (`Publish-IntuneAppPackage`, `New-IntuneWin32Application`,
-    `New-IntuneApplication -Publish`), connected with
-    `Connect-MgGraph -Scopes DeviceManagementApps.ReadWrite.All`
+    `New-IntuneApplication -Publish` and the `*-IntuneWin32App*` commands), connected with
+    `Connect-MgGraph -Scopes DeviceManagementApps.ReadWrite.All` (add `Group.Read.All` to assign to a
+    group by display name)
 
 ## Installation
 
@@ -38,24 +39,38 @@ Import-Module ./TheCodeSaiyan-PowerShell-tcs.intune.packaging/modules/tcs.intune
 | `New-APFDeployment` | Creates an APF package folder for an MSI/EXE installer (installer scripts, config, detection script) and optionally a `.intunewin` |
 | `New-APFConfigDeployment` | Creates APF configuration packages: Registry, Files, PowerShellProfiles, Script-OS, Script-App, Script-User, Custom, WindowsFeature, StandAlone-Exe, Standalone-Application |
 | `New-IntuneWin32AppPackage` | Wraps a source folder into a `.intunewin` package with `IntuneWinAppUtil.exe` |
-| `New-IntuneApplication` | Writes the application JSON configuration and the `.intunewin` package, and optionally publishes them |
+| `Get-IntuneWinPackageInfo` | Reads the metadata (setup file, sizes, MSI details) of a `.intunewin` package |
+| `New-IntuneApplication` | Writes the application JSON configuration and the `.intunewin` package, and optionally publishes and assigns them |
 | `New-IntuneWin32Rule` | Builds a Win32 app detection or requirement rule (file, registry, script, MSI) |
-| `New-ApplicationDeploymentGroup` | Generates (and optionally creates in Entra ID) the Available/Required/Test/Phase1 groups |
-| `Get-IntunePackagingTool` | Downloads `IntuneWinAppUtil.exe` from Microsoft's GitHub releases |
-| `Get-MSIProperty` | Reads the Property table (ProductName, ProductVersion, ProductCode ...) of an MSI |
-| `ConvertTo-SignedScript` | Signs PowerShell files with a PFX code-signing certificate |
-| `Invoke-Executable` | Runs an executable and returns its exit code and output |
-| `Start-DownloadFile` | Downloads a file to a folder |
-| `New-PackageJSON` | Writes package metadata JSON for a source folder |
-| `Publish-IntuneAppPackage` | Publishes a package created by `New-IntuneApplication`: creates the Win32 app, or uploads a new content version with `-Force` |
+| `Publish-IntuneAppPackage` | Publishes a package created by `New-IntuneApplication`: creates the Win32 app, or with `-Force` uploads a new content version and updates the app; then assigns it |
 | `New-IntuneWin32Application` | Creates (or clones) a Win32 app in Intune and uploads its `.intunewin` content through Microsoft Graph |
+| `Get-IntuneWin32App` | Gets Win32 apps by ID, by name, or all of them |
+| `Set-IntuneWin32App` | Updates a Win32 app's properties and rules from parameters or the `New-IntuneApplication` JSON |
+| `Remove-IntuneWin32App` | Deletes Win32 apps (asks first; supports `-WhatIf`) |
+| `Add-IntuneWin32AppSupersedence` | Makes a Win32 app supersede (update or replace) other Win32 apps |
+| `Add-IntuneWin32AppDependency` | Makes a Win32 app depend on other Win32 apps |
+| `New-ApplicationDeploymentGroup` | Generates (and optionally creates in Entra ID) the Available/Required/Test/Phase1 groups |
+| `Get-IntunePackagingTool` | Downloads `IntuneWinAppUtil.exe` from Microsoft's GitHub repository and checks its signature |
+| `Get-MSIProperty` | Reads the Property table (ProductName, ProductVersion, ProductCode ...) of an MSI |
+| `Set-ScriptSignature` | Signs PowerShell files with a PFX code-signing certificate |
+| `Invoke-Executable` | Runs an executable and returns its exit code and output |
+| `Start-DownloadFile` | Deprecated. Downloads a file to a folder |
+| `New-PackageJSON` | Deprecated. Writes package metadata JSON for a source folder |
 
-Aliases kept for earlier versions: `Get-MSIProperties`, `New-ApplicationDeploymentGroups`.
+Aliases kept for earlier versions: `Get-MSIProperties`, `New-ApplicationDeploymentGroups`,
+`ConvertTo-SignedScript`.
 
 Run `Get-Help <function> -Full` for parameters and examples.
 
 `IntuneWinAppUtil.exe` is stored per user in `%LOCALAPPDATA%\tcs.intune.packaging` (a copy in the
 module folder from an earlier version is still used), so the module works when installed for all users.
+When it is missing, the packaging commands ask before downloading release v1.8.6 (use `-AllowDownload`
+to skip the question), and a download is refused unless it is signed by Microsoft.
+
+APF packages are installed in Intune with
+`%windir%\sysnative\WindowsPowerShell\v1.0\powershell.exe -NoProfile -ExecutionPolicy RemoteSigned -WindowStyle Hidden -File Intune-I-MainInstaller.ps1`
+(uninstall: the same with `-Uninstall`); `New-APFDeployment` and `New-APFConfigDeployment` print these
+commands. `sysnative` makes the 32-bit Intune Management Extension start the 64-bit Windows PowerShell.
 
 ## Configuration
 
@@ -100,6 +115,11 @@ tcs modules with the environment variable `TCS_TELEMETRY_OPTOUT=1`.
 `.intunewin` file to the Azure Storage URI in blocks, commit it with the encryption information from
 `Detection.xml` and set the app's `committedContentVersion`. Detection and requirement rules come from
 `New-IntuneWin32Rule`.
+
+`Publish-IntuneAppPackage` then assigns the app (from the JSON file or its `-Assignment*` parameters)
+with the `assign` action, and `Add-IntuneWin32AppSupersedence` / `Add-IntuneWin32AppDependency` use
+`updateRelationships`. Both use the Graph beta endpoint: assignment filters and app relationships are
+not in v1.0.
 
 ```powershell
 Connect-MgGraph -Scopes DeviceManagementApps.ReadWrite.All
