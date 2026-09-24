@@ -67,21 +67,29 @@ function New-IntuneApplication {
         A hashtable that describes the detection rules (for example from New-IntuneWin32Rule); written to the JSON file.
 
     .PARAMETER AssignmentType
-        How the application is assigned: User-Group, Device-Group, All-Users or All-Devices.
+        How the application is assigned: User-Group, Device-Group, All-Users or All-Devices. Written to
+        the JSON file; Publish-IntuneAppPackage (and -Publish) assigns the app with it.
 
     .PARAMETER AssignmentGroup
-        The group the application is assigned to, for the User-Group and Device-Group assignment types.
+        The group (ID or display name) the application is assigned to, for the User-Group and
+        Device-Group assignment types.
+
+    .PARAMETER AssignmentIntent
+        The assignment intent: required (default), available or uninstall.
 
     .PARAMETER FilterRuleType
-        Whether the assignment filter includes or excludes devices: Include or Exclude.
+        Whether the assignment filter includes or excludes devices: Include or Exclude. Use with FilterRule.
 
     .PARAMETER FilterRule
-        The assignment filter rule.
+        The name or ID of an existing Intune assignment filter. Use with FilterRuleType.
 
     .PARAMETER Publish
-        Publishes the package to Intune with Publish-IntuneAppPackage after creating it. DetectionRuleConfig
-        (and RequirementRuleConfig) must then be rules created with New-IntuneWin32Rule. With -Overwrite an
-        existing app with the same name gets the package as a new content version.
+        Publishes the package to Intune with Publish-IntuneAppPackage after creating it and assigns it
+        as set by AssignmentType, AssignmentGroup, AssignmentIntent and the filter parameters.
+        DetectionRuleConfig (and RequirementRuleConfig) must then be rules created with
+        New-IntuneWin32Rule. With -Overwrite an existing app with the same name gets the package as a
+        new content version and its properties are updated. The assignment settings are checked before
+        anything is built.
 
     .PARAMETER IntuneToolsPath
         The path to IntuneWinAppUtil.exe. When the file does not exist, the tool in the per-user tool
@@ -187,6 +195,9 @@ function New-IntuneApplication {
 
         [string]$AssignmentGroup,
 
+        [ValidateSet('required', 'available', 'uninstall')]
+        [string]$AssignmentIntent = 'required',
+
         [ValidateSet('Include', 'Exclude')]
         [string]$FilterRuleType,
 
@@ -221,6 +232,9 @@ function New-IntuneApplication {
             # Checked before anything is built: publishing needs both files
             if ($Publish -and ($NoJson -or $NoIntuneWin)) {
                 throw 'Publish needs both the JSON file and the .intunewin package; do not combine it with -NoJson or -NoIntuneWin.'
+            }
+            if ($Publish) {
+                Test-IntuneAppAssignmentSetting -AssignmentType $AssignmentType -AssignmentGroup $AssignmentGroup -Intent $AssignmentIntent -FilterRuleType $FilterRuleType -FilterRule $FilterRule
             }
             # The JSON file is named "<ApplicationName>.<Version>.json" in OutputFolder
             Assert-SafePathSegment -Name "$ApplicationName.$Version" -ParameterName 'ApplicationName and Version' -AllowWildcard
@@ -288,6 +302,11 @@ function New-IntuneApplication {
             $ParameterSplat['RestartBehavior'] = $RestartBehavior
             $ParameterSplat['IsFeatured'] = $IsFeatured
             $ParameterSplat['OutputFolder'] = $OutputFolder
+            $ParameterSplat['AssignmentIntent'] = $AssignmentIntent
+            # Command options, not application settings
+            foreach ($Option in 'Publish', 'IntuneToolsPath', 'AllowDownload', 'Overwrite', 'NoJson', 'NoIntuneWin', 'NoCleanUp') {
+                $ParameterSplat.Remove($Option)
+            }
             Write-Verbose ("`n" + (($ParameterSplat.GetEnumerator() | ForEach-Object { "$($_.Key): $($_.Value)" }) -join "`n"))
             #endregion ParameterSplat
         }

@@ -61,6 +61,16 @@ function Read-IntuneWinPackage {
             }
         }
 
+        # Present for MSI setup files: MsiProductCode, MsiProductVersion, MsiUpgradeCode, MsiPublisher ...
+        $MsiInfo = $null
+        if ($Info.MsiInfo) {
+            $MsiInfo = [ordered]@{}
+            foreach ($Node in @($Info.MsiInfo.ChildNodes | Where-Object { $_.NodeType -eq 'Element' })) {
+                $MsiInfo[$Node.LocalName] = $Node.InnerText
+            }
+            $MsiInfo = [PSCustomObject]$MsiInfo
+        }
+
         [PSCustomObject]@{
             Name                   = [string]$Info.Name
             FileName               = [string]$Info.FileName
@@ -68,6 +78,8 @@ function Read-IntuneWinPackage {
             UnencryptedContentSize = [int64]$Info.UnencryptedContentSize
             EncryptedContentSize   = [int64]$ContentEntry.Length
             EncryptedContentPath   = $EncryptedPath
+            ToolVersion            = [string]$Info.ToolVersion
+            MsiInfo                = $MsiInfo
             EncryptionInfo         = [ordered]@{
                 encryptionKey        = [string]$Encryption.EncryptionKey
                 macKey               = [string]$Encryption.MacKey

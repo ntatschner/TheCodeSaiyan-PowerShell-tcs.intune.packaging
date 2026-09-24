@@ -12,18 +12,24 @@
         @{ ModuleName = 'tcs.core'; ModuleVersion = '0.3.0' }
     )
     FunctionsToExport    = @(
+        'Add-IntuneWin32AppDependency',
+        'Add-IntuneWin32AppSupersedence',
         'Get-IntunePackagingTool',
+        'Get-IntuneWin32App',
+        'Get-IntuneWinPackageInfo',
         'Get-MSIProperty',
         'Invoke-Executable',
         'New-APFConfigDeployment',
         'New-APFDeployment',
         'New-ApplicationDeploymentGroup',
         'New-IntuneApplication',
-        'New-IntuneWin32AppPackage',
         'New-IntuneWin32Application',
+        'New-IntuneWin32AppPackage',
         'New-IntuneWin32Rule',
         'New-PackageJSON',
         'Publish-IntuneAppPackage',
+        'Remove-IntuneWin32App',
+        'Set-IntuneWin32App',
         'Set-ScriptSignature',
         'Start-DownloadFile'
     )

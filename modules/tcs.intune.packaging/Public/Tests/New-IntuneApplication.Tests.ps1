@@ -139,6 +139,24 @@ Describe 'New-IntuneApplication' {
         Test-Path -LiteralPath $script:StagingFolder | Should -BeFalse
     }
 
+    It 'Writes the assignment settings, but not the command options, to the JSON file' {
+        $Common.AssignmentType = 'User-Group'
+        $result = New-IntuneApplication @Common -SourceFiles $Source -NoIntuneWin -AssignmentGroup 'Intune-AG-MyApp-Available' -AssignmentIntent available -FilterRuleType Include -FilterRule 'Corporate'
+        $json = (Get-Content -Path $result.JsonPath -Raw | ConvertFrom-Json).ApplicationParameters
+        $json.AssignmentType | Should -Be 'User-Group'
+        $json.AssignmentGroup | Should -Be 'Intune-AG-MyApp-Available'
+        $json.AssignmentIntent | Should -Be 'available'
+        $json.FilterRuleType | Should -Be 'Include'
+        $json.FilterRule | Should -Be 'Corporate'
+        $json.PSObject.Properties.Name | Should -Not -Contain 'NoIntuneWin'
+    }
+
+    It 'Checks the assignment settings for -Publish before building anything' {
+        $Common.AssignmentType = 'Device-Group'
+        { New-IntuneApplication @Common -SourceFiles $Source -Publish } | Should -Throw '*needs AssignmentGroup*'
+        @(Get-ChildItem -LiteralPath $Output).Count | Should -Be 0
+    }
+
     It 'Rejects an application name that is not a valid file name' {
         $Common.ApplicationName = '../MyApp'
         { New-IntuneApplication @Common -SourceFiles $Source -NoIntuneWin } | Should -Throw '*cannot be used in a file or folder name*'
