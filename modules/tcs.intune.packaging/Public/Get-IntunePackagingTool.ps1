@@ -12,6 +12,13 @@ function Get-IntunePackagingTool {
         By default the latest release is downloaded. Use DownloadTag to pin a release, or DownloadUrl to
         download a specific zip file.
 
+        The downloaded IntuneWinAppUtil.exe is verified before it is copied to Path, and refused when a
+        check fails:
+          - On Windows it must have a valid Authenticode signature from Microsoft Corporation
+            (Get-AuthenticodeSignature: Status Valid and O=Microsoft Corporation in the signer subject).
+          - With ExpectedSha256 its SHA256 hash must match. Where Authenticode signatures cannot be
+            checked (PowerShell on Linux or macOS), ExpectedSha256 is required.
+
     .PARAMETER Path
         The folder that IntuneWinAppUtil.exe is copied to. It is created when it does not exist.
 
@@ -21,6 +28,10 @@ function Get-IntunePackagingTool {
     .PARAMETER DownloadUrl
         The URL of a zip file that contains IntuneWinAppUtil.exe. Used instead of the GitHub release
         archive.
+
+    .PARAMETER ExpectedSha256
+        The expected SHA256 hash (64 hexadecimal characters) of IntuneWinAppUtil.exe. When given, the
+        downloaded file must match it.
 
     .PARAMETER Force
         Overwrites IntuneWinAppUtil.exe when it already exists in Path.
@@ -39,6 +50,11 @@ function Get-IntunePackagingTool {
 
         Downloads release v1.8.6 and overwrites an existing C:\Tools\IntuneWinAppUtil.exe.
 
+    .EXAMPLE
+        Get-IntunePackagingTool -Path "C:\Tools" -DownloadTag 'v1.8.6' -ExpectedSha256 '<sha256 of IntuneWinAppUtil.exe>'
+
+        Downloads release v1.8.6 and only keeps IntuneWinAppUtil.exe when its hash matches.
+
     .LINK
         https://github.com/microsoft/Microsoft-Win32-Content-Prep-Tool
     #>
@@ -56,6 +72,9 @@ function Get-IntunePackagingTool {
         [Parameter(Mandatory = $true, ParameterSetName = 'DownloadUrl')]
         [ValidateNotNullOrEmpty()]
         [string]$DownloadUrl,
+
+        [ValidatePattern('^[0-9A-Fa-f]{64}$')]
+        [string]$ExpectedSha256,
 
         [switch]$Force
     )
@@ -110,6 +129,8 @@ function Get-IntunePackagingTool {
             if (-not $ToolFile) {
                 throw "IntuneWinAppUtil.exe was not found in the archive downloaded from $DownloadUrl."
             }
+            # Refuse a tool that is not signed by Microsoft or does not match the expected hash
+            Assert-IntuneWinAppUtilFile -Path $ToolFile.FullName -ExpectedSha256 $ExpectedSha256
 
             if (-not (Test-Path -Path $Path -PathType Container)) {
                 $null = New-Item -Path $Path -ItemType Directory -Force -ErrorAction Stop
@@ -123,8 +144,8 @@ function Get-IntunePackagingTool {
             Get-Item -LiteralPath $Destination
         }
         finally {
-            if (Test-Path -Path $WorkFolder) {
-                Remove-Item -Path $WorkFolder -Recurse -Force -ErrorAction SilentlyContinue
+            if (Test-Path -LiteralPath $WorkFolder) {
+                Remove-Item -LiteralPath $WorkFolder -Recurse -Force -ErrorAction SilentlyContinue
             }
         }
         Invoke-TelemetryCollection @TelemetryArgs -Stage End

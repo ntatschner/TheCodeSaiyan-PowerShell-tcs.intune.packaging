@@ -1,4 +1,4 @@
-function Get-IntuneWinPackageInfo {
+function Read-IntuneWinPackage {
     <#
     .SYNOPSIS
         Reads the metadata of a .intunewin package and extracts its encrypted content.
@@ -20,7 +20,7 @@ function Get-IntuneWinPackageInfo {
     )
 
     Add-Type -AssemblyName System.IO.Compression.FileSystem -ErrorAction Stop
-    $FullPath = (Resolve-Path -Path $Path -ErrorAction Stop).ProviderPath
+    $FullPath = (Resolve-Path -LiteralPath $Path -ErrorAction Stop).ProviderPath
     $Archive = [System.IO.Compression.ZipFile]::OpenRead($FullPath)
     try {
         $Entries = @($Archive.Entries)

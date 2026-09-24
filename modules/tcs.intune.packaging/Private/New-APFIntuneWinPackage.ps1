@@ -4,9 +4,10 @@ function New-APFIntuneWinPackage {
         Wraps an APF package folder into a .intunewin file with IntuneWinAppUtil.exe.
 
     .DESCRIPTION
-        Shared by New-APFDeployment and New-APFConfigDeployment. Downloads IntuneWinAppUtil.exe to the
-        per-user tool folder when it is missing (after confirmation), runs it and returns the .intunewin
-        file. When PackageName is given the output is renamed to "<PackageName>.intunewin".
+        Shared by New-APFDeployment and New-APFConfigDeployment. Asks before an existing package is
+        replaced, then runs Invoke-IntuneWinAppUtil (which asks before IntuneWinAppUtil.exe is
+        downloaded) and returns the .intunewin file. When PackageName is given the output is renamed
+        to "<PackageName>.intunewin".
     #>
     [CmdletBinding(SupportsShouldProcess)]
     [OutputType([System.IO.FileInfo])]
@@ -23,30 +24,15 @@ function New-APFIntuneWinPackage {
         [string]$PackageName
     )
 
-    $ToolPath = Get-IntuneWinAppUtilPath
-    if (-not (Test-Path -Path $ToolPath -PathType Leaf)) {
-        $ToolFolder = Split-Path -Path $ToolPath -Parent
-        if ($PSCmdlet.ShouldContinue("IntuneWinAppUtil.exe was not found in '$ToolFolder'. Download it from GitHub now?", 'Download IntuneWinAppUtil.exe')) {
-            $null = Get-IntunePackagingTool -Path $ToolFolder -Force -ErrorAction Stop
-        }
-        else {
-            throw "IntuneWinAppUtil.exe is required to create .intunewin packages. Run 'Get-IntunePackagingTool -Path `"$ToolFolder`"' to download it."
-        }
-    }
-
-    $ToolOutput = Join-Path -Path $OutputFolder -ChildPath "$([System.IO.Path]::GetFileNameWithoutExtension($SetupFile)).intunewin"
     if ([string]::IsNullOrEmpty($PackageName)) {
-        $PackagePath = $ToolOutput
+        $PackagePath = Join-Path -Path $OutputFolder -ChildPath "$([System.IO.Path]::GetFileNameWithoutExtension($SetupFile)).intunewin"
     }
     else {
         $PackagePath = Join-Path -Path $OutputFolder -ChildPath "$PackageName.intunewin"
     }
 
-    if (Test-Path -Path $PackagePath -PathType Leaf) {
-        if ($PSCmdlet.ShouldContinue("Overwrite the existing package '$PackagePath'?", 'Confirm overwrite')) {
-            Remove-Item -Path $PackagePath -Force -ErrorAction Stop
-        }
-        else {
+    if (Test-Path -LiteralPath $PackagePath -PathType Leaf) {
+        if (-not $PSCmdlet.ShouldContinue("Overwrite the existing package '$PackagePath'?", 'Confirm overwrite')) {
             throw "The package '$PackagePath' already exists. Delete it or choose a different destination folder."
         }
     }
@@ -54,12 +40,5 @@ function New-APFIntuneWinPackage {
     if (-not $PSCmdlet.ShouldProcess($PackagePath, 'Create .intunewin package')) {
         return
     }
-    $Result = Invoke-Executable -FilePath $ToolPath -Arguments "-c `"$SourceFolder`" -s `"$SetupFile`" -o `"$OutputFolder`" -q"
-    if ($Result.ExitCode -ne 0 -or -not (Test-Path -Path $ToolOutput -PathType Leaf)) {
-        throw "IntuneWinAppUtil.exe did not create '$ToolOutput' (exit code $($Result.ExitCode)). $($Result.StandardError)"
-    }
-    if ($ToolOutput -ne $PackagePath) {
-        Move-Item -Path $ToolOutput -Destination $PackagePath -Force -ErrorAction Stop
-    }
-    Get-Item -LiteralPath $PackagePath
+    Invoke-IntuneWinAppUtil -SourceFolder $SourceFolder -SetupFile $SetupFile -OutputFolder $OutputFolder -PackageName $PackageName -Overwrite
 }

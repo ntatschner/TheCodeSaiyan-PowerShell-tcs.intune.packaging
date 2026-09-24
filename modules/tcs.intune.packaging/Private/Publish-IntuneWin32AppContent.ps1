@@ -33,7 +33,7 @@ function Publish-IntuneWin32AppContent {
     $AppUri = "v1.0/deviceAppManagement/mobileApps/$AppId"
     $EncryptedPath = Join-Path -Path ([System.IO.Path]::GetTempPath()) -ChildPath "IntunePackage-$([guid]::NewGuid().ToString('N')).bin"
     try {
-        $Package = Get-IntuneWinPackageInfo -Path $IntuneWinPath -ExtractTo $EncryptedPath -ErrorAction Stop
+        $Package = Read-IntuneWinPackage -Path $IntuneWinPath -ExtractTo $EncryptedPath -ErrorAction Stop
 
         Write-Verbose "Creating a content version for app $AppId."
         $ContentVersion = Invoke-MgGraphRequest -Method POST -Uri "$AppUri/microsoft.graph.win32LobApp/contentVersions" -Body '{}' -ContentType 'application/json' -OutputType PSObject -ErrorAction Stop

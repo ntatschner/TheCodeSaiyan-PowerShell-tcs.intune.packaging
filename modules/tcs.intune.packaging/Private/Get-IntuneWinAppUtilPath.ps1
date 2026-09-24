@@ -14,7 +14,7 @@ function Get-IntuneWinAppUtilPath {
 
     $ModuleRoot = Split-Path -Path $PSScriptRoot -Parent
     $LegacyPath = Join-Path -Path $ModuleRoot -ChildPath 'IntuneWinAppUtil.exe'
-    if (Test-Path -Path $LegacyPath -PathType Leaf) {
+    if (Test-Path -LiteralPath $LegacyPath -PathType Leaf) {
         return $LegacyPath
     }
 

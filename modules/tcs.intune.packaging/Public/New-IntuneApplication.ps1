@@ -83,8 +83,13 @@ function New-IntuneApplication {
         existing app with the same name gets the package as a new content version.
 
     .PARAMETER IntuneToolsPath
-        The path to IntuneWinAppUtil.exe. When the file does not exist, release v1.8.6 of the tool is
-        downloaded to the per-user tool folder (LocalApplicationData\tcs.intune.packaging) and used.
+        The path to IntuneWinAppUtil.exe. When the file does not exist, the tool in the per-user tool
+        folder (LocalApplicationData\tcs.intune.packaging) is used; when it is missing there too you are
+        asked before release v1.8.6 is downloaded (see AllowDownload).
+
+    .PARAMETER AllowDownload
+        Download IntuneWinAppUtil.exe to the per-user tool folder without asking when it is missing.
+        The download is refused unless it is signed by Microsoft (see Get-IntunePackagingTool).
 
     .PARAMETER Overwrite
         Overwrite existing JSON and .intunewin files in OutputFolder.
@@ -190,6 +195,8 @@ function New-IntuneApplication {
 
         [ValidateNotNullOrEmpty()]
         [string]$IntuneToolsPath = (Get-IntuneWinAppUtilPath),
+
+        [switch]$AllowDownload,
 
         [switch]$Overwrite,
 
@@ -324,17 +331,18 @@ function New-IntuneApplication {
                         $SourceFolder = $MainInstallerFilePath
                     }
 
-                    if (-not (Test-Path -Path $IntuneToolsPath -PathType Leaf)) {
-                        # Pinned to v1.8.6 as a known stable release
-                        $IntuneToolsPath = (Get-IntunePackagingTool -Path (Split-Path -Path (Get-IntuneWinAppUtilPath) -Parent) -Force -DownloadTag 'v1.8.6' -ErrorAction Stop).FullName
+                    $ToolParameters = @{
+                        SourceFolder  = $SourceFolder
+                        SetupFile     = $MainInstallerFileFullPath
+                        OutputFolder  = $OutputFolder
+                        AllowDownload = $AllowDownload
+                        Overwrite     = $true
                     }
-                    if (Test-Path -Path $IntunewinFullPath) {
-                        Remove-Item -Path $IntunewinFullPath -Force -ErrorAction Stop
+                    # A missing IntuneToolsPath falls back to the per-user tool folder (and its download policy)
+                    if (Test-Path -LiteralPath $IntuneToolsPath -PathType Leaf) {
+                        $ToolParameters['ToolPath'] = $IntuneToolsPath
                     }
-                    $Result = Invoke-Executable -FilePath $IntuneToolsPath -Arguments "-c `"$SourceFolder`" -s `"$MainInstallerFileFullPath`" -o `"$OutputFolder`" -q"
-                    if ($Result.ExitCode -ne 0 -or -not (Test-Path -Path $IntunewinFullPath)) {
-                        throw "IntuneWinAppUtil.exe did not create '$IntunewinFullPath' (exit code $($Result.ExitCode)). $($Result.StandardError)"
-                    }
+                    $IntunewinFullPath = (Invoke-IntuneWinAppUtil @ToolParameters -ErrorAction Stop).FullName
                 }
             }
             #endregion CreateIntuneWin
