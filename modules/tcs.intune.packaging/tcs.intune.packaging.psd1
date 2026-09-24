@@ -1,6 +1,6 @@
 @{
     RootModule           = 'tcs.intune.packaging.psm1'
-    ModuleVersion        = '0.4.0'
+    ModuleVersion        = '0.4.1'
     CompatiblePSEditions = @('Desktop', 'Core')
     GUID                 = 'bfe12388-5f86-4da1-b08b-a439ff6f690c'
     Author               = 'Nigel Tatschner'
