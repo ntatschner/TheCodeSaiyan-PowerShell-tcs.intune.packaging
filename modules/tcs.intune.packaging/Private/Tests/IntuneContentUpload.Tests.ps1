@@ -21,12 +21,12 @@ Describe 'Intune content upload helpers' {
         }
     }
 
-    Context 'Get-IntuneWinPackageInfo' {
+    Context 'Read-IntuneWinPackage' {
         It 'Reads Detection.xml and extracts the encrypted content' {
             $package = New-TestIntuneWin -Path (Join-Path -Path $TestDrive -ChildPath 'app.intunewin') -ContentSize 5000 -SetupFile 'install.cmd'
             $target = Join-Path -Path $TestDrive -ChildPath 'content.bin'
             $info = InModuleScope tcs.intune.packaging -Parameters @{ Path = $package.FullName; Target = $target } {
-                Get-IntuneWinPackageInfo -Path $Path -ExtractTo $Target
+                Read-IntuneWinPackage -Path $Path -ExtractTo $Target
             }
             $info.FileName | Should -Be 'IntunePackage.intunewin'
             $info.SetupFile | Should -Be 'install.cmd'
@@ -46,7 +46,7 @@ Describe 'Intune content upload helpers' {
             Set-Content -Path (Join-Path -Path $folder -ChildPath 'a.txt') -Value 'x'
             $zip = Join-Path -Path $TestDrive -ChildPath 'bad.intunewin'
             [System.IO.Compression.ZipFile]::CreateFromDirectory($folder, $zip)
-            { InModuleScope tcs.intune.packaging -Parameters @{ Path = $zip } { Get-IntuneWinPackageInfo -Path $Path } } | Should -Throw '*not a .intunewin package*'
+            { InModuleScope tcs.intune.packaging -Parameters @{ Path = $zip } { Read-IntuneWinPackage -Path $Path } } | Should -Throw '*not a .intunewin package*'
         }
     }
 

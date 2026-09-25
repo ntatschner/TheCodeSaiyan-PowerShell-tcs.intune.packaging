@@ -234,7 +234,7 @@ function New-IntuneWin32Application {
         }
         Invoke-TelemetryCollection @TelemetryArgs -Stage Start -ClearTimer
         try {
-            $Package = Get-IntuneWinPackageInfo -Path $IntuneWinFilePath -ErrorAction Stop
+            $Package = Read-IntuneWinPackage -Path $IntuneWinFilePath -ErrorAction Stop
 
             # Start from the existing app when cloning; bound parameters are applied on top
             $Body = [ordered]@{ '@odata.type' = '#microsoft.graph.win32LobApp' }

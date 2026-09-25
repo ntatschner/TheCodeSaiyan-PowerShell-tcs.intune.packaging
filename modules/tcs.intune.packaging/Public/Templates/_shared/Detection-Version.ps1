@@ -1,8 +1,8 @@
 # Intune detection script to check if the application is installed using the version info in the config.installer.json file
 
 # App name and version as per config.installer.json
-$AppName = "##NAME_TEMPLATE"
-$Version = "##VERSION_TEMPLATE"
+$AppName = '##NAME_TEMPLATE'
+$Version = '##VERSION_TEMPLATE'
 $APFBase = "APF"
 
 # Paths to check for the version info file
@@ -13,27 +13,8 @@ foreach ($Path in $PathsToCheck) {
     if (Test-Path -Path $Path) {
         $VersionInfo = Get-Content -Path $Path | ConvertFrom-Json
         if ($VersionInfo.version -eq $Version) {
-            switch ($VersionInfo.target) {
-                "user" {
-                    if ($Path -like "c:\Users\*") {
-                        Write-Output "The application is installed for the current user and matches the required version on file $Path"
-                        exit 0
-                    }
-                }
-                "system" {
-                    if ($Path -like "${env:ProgramFiles(x86)}\*") {
-                        Write-Output "The application is installed for all users and matches the required version on file $Path"
-                        exit 0
-                    } elseif ($Path -like "${env:ProgramFiles}\*") {
-                        Write-Output "The application is installed for all users and matches the required version on file $Path"
-                        exit 0
-                    }
-                }
-                default {
-                    Write-Output "Unknown target in the version info file $Path"
-                    exit 1
-                }
-            }
+            Write-Output "The application is installed for all users and matches the required version on file $Path"
+            exit 0
         } else {
             # Test if installed version is greater than required version
             $InstalledVersion = $VersionInfo.version

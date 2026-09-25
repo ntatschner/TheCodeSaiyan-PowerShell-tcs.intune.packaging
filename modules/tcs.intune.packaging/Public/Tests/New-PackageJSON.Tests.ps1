@@ -4,9 +4,12 @@ BeforeAll {
     $env:TCS_TELEMETRY_OPTOUT = '1'
     $ModuleRoot = Split-Path -Path (Split-Path -Path $PSScriptRoot -Parent) -Parent
     Import-Module -Name (Join-Path -Path $ModuleRoot -ChildPath 'tcs.intune.packaging.psd1') -Force
+    # New-PackageJSON is deprecated; keep the expected warning out of the test output
+    $PSDefaultParameterValues['New-PackageJSON:WarningAction'] = 'SilentlyContinue'
 }
 
 AfterAll {
+    $PSDefaultParameterValues.Remove('New-PackageJSON:WarningAction')
     Remove-Module -Name tcs.intune.packaging -Force -ErrorAction SilentlyContinue
 }
 
@@ -38,6 +41,11 @@ Describe 'New-PackageJSON' {
     It 'Writes nothing with -WhatIf' {
         New-PackageJSON -PackageName 'MyApp' -Version '1.0' -Description 'Desc' -Author 'IT' -SourceDirectory $Source -MainInstaller 'setup.exe' -WhatIf
         Join-Path -Path $Source -ChildPath 'package-MyApp-v1.0.json' | Should -Not -Exist
+    }
+
+    It 'Writes a deprecation warning' {
+        $null = New-PackageJSON -PackageName 'MyApp' -Version '1.0' -Description 'D' -Author 'IT' -SourceDirectory $Source -MainInstaller 'setup.exe' -WarningVariable deprecation -WarningAction SilentlyContinue
+        "$deprecation" | Should -Match 'deprecated'
     }
 
     It 'Rejects a source directory that does not exist' {

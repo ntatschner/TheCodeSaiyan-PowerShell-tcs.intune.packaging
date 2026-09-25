@@ -16,14 +16,27 @@ LONG DESCRIPTION
     need the Microsoft.Entra or Microsoft.Graph.Authentication modules.
 
     APF packages are built from the installer scripts in the module's
-    Public/Templates folder. Each package contains Intune-I-MainInstaller.ps1
-    (install command: powershell.exe -ExecutionPolicy RemoteSigned -File
-    Intune-I-MainInstaller.ps1, uninstall: the same with -Uninstall),
+    Public/Templates folder. Each package contains Intune-I-MainInstaller.ps1,
     optional pre- and post-install scripts, config.installer.json and a
-    detection script.
+    detection script. Install command:
+
+        %windir%\sysnative\WindowsPowerShell\v1.0\powershell.exe -NoProfile
+        -ExecutionPolicy RemoteSigned -WindowStyle Hidden
+        -File Intune-I-MainInstaller.ps1
+
+    Uninstall command: the same with -Uninstall. The Intune Management
+    Extension is a 32-bit process; sysnative starts the 64-bit Windows
+    PowerShell.
+
+    APF package names become folder names and are written into the
+    detection scripts as single-quoted strings; names with path separators,
+    wildcards or characters Windows does not allow in file names are rejected.
 
     IntuneWinAppUtil.exe is kept per user in
-    %LOCALAPPDATA%\tcs.intune.packaging.
+    %LOCALAPPDATA%\tcs.intune.packaging. When it is missing the packaging
+    commands ask before downloading it (or use -AllowDownload), and
+    Get-IntunePackagingTool refuses a download that is not signed by
+    Microsoft Corporation (or does not match -ExpectedSha256).
 
 EXAMPLES
     New-APFDeployment -Path C:\Installers\MyApp.msi -DestinationFolder C:\Packages -CreateIntuneWinPackage
@@ -44,8 +57,17 @@ NOTE
     variable.
 
     Publish-IntuneAppPackage and New-IntuneWin32Application create Win32 apps
-    in Intune and upload their content with Microsoft Graph. Connect first
+    in Intune and upload their content with Microsoft Graph.
+    Publish-IntuneAppPackage -Force uploads a new content version to an
+    existing app and updates its properties, and then assigns the app
+    (group, all users or all devices; required, available or uninstall;
+    optional assignment filter). Get-IntuneWin32App, Set-IntuneWin32App,
+    Remove-IntuneWin32App, Add-IntuneWin32AppSupersedence and
+    Add-IntuneWin32AppDependency manage existing Win32 apps. Connect first
     with Connect-MgGraph -Scopes DeviceManagementApps.ReadWrite.All.
+
+    Set-ScriptSignature signs scripts; ConvertTo-SignedScript is an alias for
+    it. New-PackageJSON and Start-DownloadFile are deprecated.
 
 SEE ALSO
     https://github.com/ntatschner/TheCodeSaiyan-PowerShell-tcs.intune.packaging

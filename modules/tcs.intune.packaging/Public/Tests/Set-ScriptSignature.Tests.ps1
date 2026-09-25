@@ -9,7 +9,7 @@ BeforeAll {
 AfterAll {
     Remove-Module -Name tcs.intune.packaging -Force -ErrorAction SilentlyContinue
 }
-Describe 'ConvertTo-SignedScript' {
+Describe 'Set-ScriptSignature' {
     BeforeAll {
         # Set-AuthenticodeSignature only exists on Windows; give Pester something to mock elsewhere
         $script:DefinedStub = $false
@@ -51,7 +51,7 @@ Describe 'ConvertTo-SignedScript' {
 
     It 'Signs each file exactly once' {
         Mock -ModuleName tcs.intune.packaging Set-AuthenticodeSignature { }
-        ConvertTo-SignedScript -Path $script:Scripts -CertificateFile $script:PfxPath -Password $script:Password
+        Set-ScriptSignature -Path $script:Scripts -CertificateFile $script:PfxPath -Password $script:Password
         Should -Invoke -ModuleName tcs.intune.packaging Set-AuthenticodeSignature -Times 2 -Exactly
         foreach ($path in $script:Scripts) {
             Should -Invoke -ModuleName tcs.intune.packaging Set-AuthenticodeSignature -Times 1 -Exactly -ParameterFilter { $FilePath -eq $path }
@@ -60,24 +60,28 @@ Describe 'ConvertTo-SignedScript' {
 
     It 'Loads the certificate with its private key' {
         Mock -ModuleName tcs.intune.packaging Set-AuthenticodeSignature { }
-        ConvertTo-SignedScript -Path $script:Scripts[0] -CertificateFile $script:PfxPath -Password $script:Password
+        Set-ScriptSignature -Path $script:Scripts[0] -CertificateFile $script:PfxPath -Password $script:Password
         Should -Invoke -ModuleName tcs.intune.packaging Set-AuthenticodeSignature -Times 1 -Exactly -ParameterFilter { $Certificate.HasPrivateKey -and $Certificate.Subject -eq 'CN=tcs test signing' }
     }
 
     It 'Throws for a wrong certificate password' {
         $wrong = ConvertTo-TestSecureString 'wrong'
-        { ConvertTo-SignedScript -Path $script:Scripts[0] -CertificateFile $script:PfxPath -Password $wrong } | Should -Throw '*Failed to load certificate*'
+        { Set-ScriptSignature -Path $script:Scripts[0] -CertificateFile $script:PfxPath -Password $wrong } | Should -Throw '*Failed to load certificate*'
     }
 
     It 'Rejects files that are not PowerShell scripts' {
         $text = Join-Path -Path $TestDrive -ChildPath 'notes.txt'
         Set-Content -Path $text -Value 'x'
-        { ConvertTo-SignedScript -Path $text -CertificateFile $script:PfxPath -Password $script:Password } | Should -Throw '*PowerShell script*'
+        { Set-ScriptSignature -Path $text -CertificateFile $script:PfxPath -Password $script:Password } | Should -Throw '*PowerShell script*'
+    }
+
+    It 'Is also available as ConvertTo-SignedScript' {
+        (Get-Alias -Name ConvertTo-SignedScript).ResolvedCommandName | Should -Be 'Set-ScriptSignature'
     }
 
     It 'Signs nothing with -WhatIf' {
         Mock -ModuleName tcs.intune.packaging Set-AuthenticodeSignature { }
-        ConvertTo-SignedScript -Path $script:Scripts -CertificateFile $script:PfxPath -Password $script:Password -WhatIf
+        Set-ScriptSignature -Path $script:Scripts -CertificateFile $script:PfxPath -Password $script:Password -WhatIf
         Should -Invoke -ModuleName tcs.intune.packaging Set-AuthenticodeSignature -Times 0 -Exactly
     }
 }

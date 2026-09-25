@@ -1,6 +1,6 @@
 @{
     RootModule           = 'tcs.intune.packaging.psm1'
-    ModuleVersion        = '0.4.1'
+    ModuleVersion        = '0.5.0'
     CompatiblePSEditions = @('Desktop', 'Core')
     GUID                 = 'bfe12388-5f86-4da1-b08b-a439ff6f690c'
     Author               = 'Nigel Tatschner'
@@ -12,24 +12,30 @@
         @{ ModuleName = 'tcs.core'; ModuleVersion = '0.3.0' }
     )
     FunctionsToExport    = @(
-        'ConvertTo-SignedScript',
+        'Add-IntuneWin32AppDependency',
+        'Add-IntuneWin32AppSupersedence',
         'Get-IntunePackagingTool',
+        'Get-IntuneWin32App',
+        'Get-IntuneWinPackageInfo',
         'Get-MSIProperty',
         'Invoke-Executable',
         'New-APFConfigDeployment',
         'New-APFDeployment',
         'New-ApplicationDeploymentGroup',
         'New-IntuneApplication',
-        'New-IntuneWin32AppPackage',
         'New-IntuneWin32Application',
+        'New-IntuneWin32AppPackage',
         'New-IntuneWin32Rule',
         'New-PackageJSON',
         'Publish-IntuneAppPackage',
+        'Remove-IntuneWin32App',
+        'Set-IntuneWin32App',
+        'Set-ScriptSignature',
         'Start-DownloadFile'
     )
     CmdletsToExport      = @()
     VariablesToExport    = @()
-    AliasesToExport      = @('Get-MSIProperties', 'New-ApplicationDeploymentGroups')
+    AliasesToExport      = @('ConvertTo-SignedScript', 'Get-MSIProperties', 'New-ApplicationDeploymentGroups')
     PrivateData          = @{
         PSData = @{
             Tags         = @('Intune', 'Packaging', 'Deployment', 'Applications', 'Win32', 'IntuneWin', 'Windows', 'PSEdition_Desktop', 'PSEdition_Core')

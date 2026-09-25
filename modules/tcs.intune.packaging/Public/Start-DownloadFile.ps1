@@ -8,6 +8,10 @@ function Start-DownloadFile {
         The folder is created when it does not exist. Download progress is shown by Invoke-WebRequest.
         A failed download throws a terminating error and no partial file is left behind.
 
+        Deprecated: no other command in this module uses Start-DownloadFile, and it may be removed in a
+        future version. Use Invoke-WebRequest -OutFile instead. A deprecation warning is written each
+        time it runs.
+
     .PARAMETER URL
         The URL of the file to download.
 
@@ -54,6 +58,7 @@ function Start-DownloadFile {
         }
         Invoke-TelemetryCollection @TelemetryArgs -Stage Start -ClearTimer
         $TelemetryFailed = $false
+        Write-Warning 'Start-DownloadFile is deprecated and may be removed in a future version. Use Invoke-WebRequest -OutFile instead.'
     }
     process {
         try {

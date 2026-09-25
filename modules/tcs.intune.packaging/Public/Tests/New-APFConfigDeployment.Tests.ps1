@@ -4,6 +4,21 @@ BeforeAll {
     $env:TCS_TELEMETRY_OPTOUT = '1'
     $ModuleRoot = Split-Path -Path (Split-Path -Path $PSScriptRoot -Parent) -Parent
     Import-Module -Name (Join-Path -Path $ModuleRoot -ChildPath 'tcs.intune.packaging.psd1') -Force
+
+    # Returns the string assigned to a variable in a script, read from the parsed script (not by running it)
+    function Get-AssignedString {
+        param([string]$Path, [string]$Variable)
+        $tokens = $null
+        $errors = $null
+        $ast = [System.Management.Automation.Language.Parser]::ParseFile($Path, [ref]$tokens, [ref]$errors)
+        $errors | Should -BeNullOrEmpty
+        $assignment = $ast.Find({
+                param($node)
+                $node -is [System.Management.Automation.Language.AssignmentStatementAst] -and $node.Left.VariablePath.UserPath -eq $Variable
+            }, $true)
+        $assignment.Right.Expression | Should -BeOfType ([System.Management.Automation.Language.StringConstantExpressionAst])
+        $assignment.Right.Expression.Value
+    }
 }
 
 AfterAll {
@@ -31,7 +46,7 @@ Describe 'New-APFConfigDeployment' {
             $config.registryfile | Should -Be 'RegPkg_Registry.csv'
             Join-Path -Path $folder -ChildPath 'Intune-I-MainInstaller.ps1' | Should -Exist
             Join-Path -Path $folder -ChildPath 'README.md' | Should -Not -Exist
-            (Get-Content -Path (Join-Path -Path $folder -ChildPath 'Intune-D-RegistryDetection.ps1') -Raw) | Should -Match '\$AppName = "RegPkg"'
+            (Get-Content -Path (Join-Path -Path $folder -ChildPath 'Intune-D-RegistryDetection.ps1') -Raw) | Should -Match "\`$AppName = 'RegPkg'"
         }
 
         It 'Rejects a registry value with the wrong number of fields' {
@@ -127,7 +142,7 @@ Describe 'New-APFConfigDeployment' {
             $config.target | Should -Be $Target
             $config.includedfiles | Should -Be 'settings.xml'
             $config.version | Should -Be '1.0'
-            (Get-Content -Path (Join-Path -Path $folder -ChildPath 'Intune-D-Detection.ps1') -Raw) | Should -Match '\$AppName = "ScriptPkg"'
+            (Get-Content -Path (Join-Path -Path $folder -ChildPath 'Intune-D-Detection.ps1') -Raw) | Should -Match "\`$AppName = 'ScriptPkg'"
         }
 
         It 'Rejects a deployment script that is not a .ps1 file' {
@@ -162,6 +177,109 @@ Describe 'New-APFConfigDeployment' {
                 $PackageName -eq 'WinPkg'
             }
             $output -join "`n" | Should -Match 'WinPkg\.intunewin'
+            $output -join "`n" | Should -Match ([regex]::Escape('%windir%\sysnative\WindowsPowerShell\v1.0\powershell.exe'))
+        }
+    }
+
+    Context 'Pipeline input' {
+        It 'Creates one package per piped object and never touches the destination folder itself' {
+            Set-Content -Path (Join-Path -Path $Destination -ChildPath 'keep.txt') -Value 'keep'
+            Mock -ModuleName tcs.intune.packaging Confirm-FolderOverwrite { $true }
+            $null = @(
+                [PSCustomObject]@{ Name = 'PipeOne'; Version = '1.0.0.0' }
+                [PSCustomObject]@{ Name = 'PipeTwo'; Version = '2.0.0.0' }
+            ) | New-APFConfigDeployment -ConfigurationType Custom -DestinationFolder $Destination -Confirm:$false
+            Join-Path -Path $Destination -ChildPath 'keep.txt' | Should -Exist
+            (Get-Content -Path (Join-Path -Path $Destination -ChildPath 'PipeOne/config.installer.json') -Raw | ConvertFrom-Json).version | Should -Be '1.0.0.0'
+            (Get-Content -Path (Join-Path -Path $Destination -ChildPath 'PipeTwo/config.installer.json') -Raw | ConvertFrom-Json).version | Should -Be '2.0.0.0'
+            Should -Invoke -ModuleName tcs.intune.packaging Confirm-FolderOverwrite -Times 0 -Exactly
+        }
+
+        It 'Reads DestinationFolder from each piped object' {
+            $other = Join-Path -Path $TestDrive -ChildPath ([guid]::NewGuid().ToString())
+            $null = New-Item -Path $other -ItemType Directory
+            $null = [PSCustomObject]@{ Name = 'PipeDest'; Version = '1.0'; DestinationFolder = $other } |
+                New-APFConfigDeployment -ConfigurationType Custom -Confirm:$false
+            Join-Path -Path $other -ChildPath 'PipeDest/Intune-Custom.ps1' | Should -Exist
+        }
+    }
+
+    Context 'Existing package folder' {
+        BeforeEach {
+            $existing = Join-Path -Path $Destination -ChildPath 'Existing'
+            $null = New-Item -Path $existing -ItemType Directory
+            Set-Content -Path (Join-Path -Path $existing -ChildPath 'old.txt') -Value 'old'
+        }
+
+        It 'Leaves the folder unchanged and skips the package when the overwrite is declined' {
+            Mock -ModuleName tcs.intune.packaging Confirm-FolderOverwrite { $false }
+            Mock -ModuleName tcs.intune.packaging New-APFIntuneWinPackage { }
+            $output = New-APFConfigDeployment -ConfigurationType Custom -Name 'Existing' -Version '1.0' -DestinationFolder $Destination -CreateIntuneWinPackage -Confirm:$false -WarningVariable apfWarning -WarningAction SilentlyContinue
+            Join-Path -Path $existing -ChildPath 'old.txt' | Should -Exist
+            Join-Path -Path $existing -ChildPath 'config.installer.json' | Should -Not -Exist
+            "$apfWarning" | Should -Match 'was not changed'
+            $output | Should -BeNullOrEmpty
+            Should -Invoke -ModuleName tcs.intune.packaging New-APFIntuneWinPackage -Times 0 -Exactly
+        }
+
+        It 'Recreates the folder when the overwrite is confirmed' {
+            Mock -ModuleName tcs.intune.packaging Confirm-FolderOverwrite { $true }
+            $null = New-APFConfigDeployment -ConfigurationType Custom -Name 'Existing' -Version '1.0' -DestinationFolder $Destination -Confirm:$false
+            Join-Path -Path $existing -ChildPath 'old.txt' | Should -Not -Exist
+            Join-Path -Path $existing -ChildPath 'config.installer.json' | Should -Exist
+        }
+    }
+
+    Context 'Names with special characters' {
+        It 'Writes a name with quotes, a subexpression and dots into a detection script that parses' {
+            $name = "O'Brien `$(Get-Date) v1..2"
+            $null = New-APFConfigDeployment -ConfigurationType Custom -Name $name -Version '1.0' -DestinationFolder $Destination -Confirm:$false
+            $folder = Join-Path -Path $Destination -ChildPath $name
+            Test-Path -LiteralPath $folder -PathType Container | Should -BeTrue
+            @(Get-ChildItem -LiteralPath $Destination).Count | Should -Be 1
+            Get-AssignedString -Path (Join-Path -Path $folder -ChildPath 'Intune-D-Detection.ps1') -Variable 'AppName' | Should -BeExactly $name
+            Get-AssignedString -Path (Join-Path -Path $folder -ChildPath 'Intune-D-Detection.ps1') -Variable 'Version' | Should -BeExactly '1.0'
+        }
+
+        It 'Writes the name into the detection script of the <Template> template so that it parses' -ForEach @(
+            @{ Template = 'Application' }
+            @{ Template = 'Files' }
+            @{ Template = 'PowerShellProfile' }
+            @{ Template = 'Registry' }
+            @{ Template = 'WindowsFeatures' }
+            @{ Template = 'script' }
+            @{ Template = 'script-os' }
+            @{ Template = 'standalone-application' }
+            @{ Template = 'standalone-exe' }
+        ) {
+            # A double quote is not allowed in a folder name, so only the template text is checked here
+            $name = "It's `$(x) `"quoted`" .."
+            $package = Join-Path -Path $TestDrive -ChildPath ([guid]::NewGuid().ToString())
+            $null = New-Item -Path $package -ItemType Directory
+            $detection = InModuleScope tcs.intune.packaging -Parameters @{ Template = $Template; Package = $package; Name = $name } {
+                Copy-APFTemplate -Template $Template -Destination $Package
+                $script = (Get-ChildItem -Path $Package -Filter 'Intune-D-*.ps1').FullName
+                Set-TemplateToken -Path $script -Values @{ NAME = $Name; VERSION = '1.0' }
+                $script
+            }
+            Get-AssignedString -Path $detection -Variable 'AppName' | Should -BeExactly $name
+            Get-AssignedString -Path $detection -Variable 'Version' | Should -BeExactly '1.0'
+        }
+
+        It 'Rejects the name <Name>' -ForEach @(
+            @{ Name = '..' }
+            @{ Name = '.' }
+            @{ Name = '../Outside' }
+            @{ Name = 'a\b' }
+            @{ Name = 'Wild[1]' }
+            @{ Name = 'Star*' }
+            @{ Name = 'Quote"d' }
+            @{ Name = 'Trailing.' }
+        ) {
+            $null = New-APFConfigDeployment -ConfigurationType Custom -Name $Name -Version '1.0' -DestinationFolder $Destination -Confirm:$false -ErrorVariable apfError -ErrorAction SilentlyContinue
+            $apfError | Should -Not -BeNullOrEmpty
+            @(Get-ChildItem -LiteralPath $Destination).Count | Should -Be 0
+            Join-Path -Path (Split-Path -Path $Destination -Parent) -ChildPath 'Outside' | Should -Not -Exist
         }
     }
 }

@@ -30,8 +30,10 @@ catch {
 }
 #endregion
 
-# The plural names are kept as aliases for callers of versions before 0.3.0
+# The plural names are kept as aliases for callers of versions before 0.3.0, and
+# ConvertTo-SignedScript for callers of versions before 0.5.0
 Set-Alias -Name 'Get-MSIProperties' -Value 'Get-MSIProperty'
 Set-Alias -Name 'New-ApplicationDeploymentGroups' -Value 'New-ApplicationDeploymentGroup'
+Set-Alias -Name 'ConvertTo-SignedScript' -Value 'Set-ScriptSignature'
 
-Export-ModuleMember -Function $Public.BaseName -Alias 'Get-MSIProperties', 'New-ApplicationDeploymentGroups'
+Export-ModuleMember -Function $Public.BaseName -Alias 'Get-MSIProperties', 'New-ApplicationDeploymentGroups', 'ConvertTo-SignedScript'

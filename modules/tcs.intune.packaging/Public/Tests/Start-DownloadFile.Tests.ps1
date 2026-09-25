@@ -4,9 +4,12 @@ BeforeAll {
     $env:TCS_TELEMETRY_OPTOUT = '1'
     $ModuleRoot = Split-Path -Path (Split-Path -Path $PSScriptRoot -Parent) -Parent
     Import-Module -Name (Join-Path -Path $ModuleRoot -ChildPath 'tcs.intune.packaging.psd1') -Force
+    # Start-DownloadFile is deprecated; keep the expected warning out of the test output
+    $PSDefaultParameterValues['Start-DownloadFile:WarningAction'] = 'SilentlyContinue'
 }
 
 AfterAll {
+    $PSDefaultParameterValues.Remove('Start-DownloadFile:WarningAction')
     Remove-Module -Name tcs.intune.packaging -Force -ErrorAction SilentlyContinue
 }
 
@@ -26,6 +29,12 @@ Describe 'Start-DownloadFile' {
         $folder = Join-Path -Path $TestDrive -ChildPath 'failed'
         { Start-DownloadFile -URL 'https://example.invalid/file.msi' -Path $folder -Name 'file.msi' } | Should -Throw '*network down*'
         Join-Path -Path $folder -ChildPath 'file.msi' | Should -Not -Exist
+    }
+
+    It 'Writes a deprecation warning' {
+        Mock -ModuleName tcs.intune.packaging Invoke-WebRequest { Set-Content -Path $OutFile -Value 'data' }
+        Start-DownloadFile -URL 'https://example.invalid/w.zip' -Path $TestDrive -Name 'w.zip' -WarningVariable deprecation -WarningAction SilentlyContinue
+        "$deprecation" | Should -Match 'deprecated'
     }
 
     It 'Does not create global variables' {

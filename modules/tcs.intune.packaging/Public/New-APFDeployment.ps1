@@ -12,7 +12,12 @@ function New-APFDeployment {
         For MSI files the name and version are read from the MSI when not supplied (Windows only). For
         EXE files the file name and file version are used.
 
-        When the application folder already exists you are asked before it is deleted and recreated.
+        When the application folder already exists you are asked before it is deleted and recreated;
+        when you decline, the folder is left unchanged and a warning is written.
+
+        The name is used as a folder name and is written into the detection script. It must not be
+        '.' or '..', contain path separators, wildcard characters ([ ]) or characters that Windows does
+        not allow in file names (< > : " | ? *), or end with a space or a dot.
 
     .PARAMETER Name
         The name of the application. It is written into the exported configuration files and used as the
@@ -163,19 +168,19 @@ function New-APFDeployment {
                 throw 'The application name could not be determined. Specify it with -Name.'
             }
 
-            # Create the application folder
-            $AppFolder = Join-Path -Path $DestinationFolder -ChildPath $Name
+            # Create the application folder; Name is validated and the folder must be a subfolder of DestinationFolder
+            $AppFolder = Get-PackageFolderPath -DestinationFolder $DestinationFolder -Name $Name
             if (-not $PSCmdlet.ShouldProcess($AppFolder, 'Create APF deployment package')) {
                 Invoke-TelemetryCollection @TelemetryArgs -Stage End
                 return
             }
-            if (Test-Path -Path $AppFolder) {
-                if (-not $PSCmdlet.ShouldContinue("Overwrite existing subfolder '$AppFolder' for the application? Warning: This will recursively delete all files in the folder.", "Confirm Overwrite")) {
+            if (Test-Path -LiteralPath $AppFolder) {
+                if (-not (Confirm-FolderOverwrite -Path $AppFolder)) {
                     Write-Warning "The folder '$AppFolder' already exists and was not changed."
                     Invoke-TelemetryCollection @TelemetryArgs -Stage End
                     return
                 }
-                Remove-Item -Path $AppFolder -Recurse -Force -ErrorAction Stop
+                Remove-Item -LiteralPath $AppFolder -Recurse -Force -ErrorAction Stop
             }
             $null = New-Item -Path $AppFolder -ItemType Directory -ErrorAction Stop
 
@@ -185,8 +190,7 @@ function New-APFDeployment {
                 Copy-Item -Path $File -Destination $AppFolder -Recurse -ErrorAction Stop
             }
             # Copy the template files to the application folder
-            $TemplateFolder = Join-Path -Path (Join-Path -Path $PSScriptRoot -ChildPath 'Templates') -ChildPath 'Application'
-            Copy-Item -Path (Join-Path -Path $TemplateFolder -ChildPath '*') -Destination $AppFolder -Recurse -Exclude '*.md' -ErrorAction Stop
+            Copy-APFTemplate -Template 'Application' -Destination $AppFolder -Exclude '*.md'
 
             # Update the template files with the application details
             $ConfigPath = Join-Path -Path $AppFolder -ChildPath 'config.installer.json'
@@ -200,10 +204,10 @@ function New-APFDeployment {
             $MainConfig.uninstallPath = [string]$UninstallPath
             $MainConfig | ConvertTo-Json -Depth 10 | Set-Content -Path $ConfigPath -ErrorAction Stop
 
-            $DetectionPath = Join-Path -Path $AppFolder -ChildPath 'Intune-D-AppDetection.ps1'
-            $DetectionScript = Get-Content -Path $DetectionPath -Raw -ErrorAction Stop
-            $DetectionScript = $DetectionScript.Replace('##NAME_TEMPLATE', $Name).Replace('##VERSION_TEMPLATE', $Version.ToString()).Replace('##FILENAME_TEMPLATE', $InstallerFile.Name)
-            Set-Content -Path $DetectionPath -Value $DetectionScript -NoNewline -ErrorAction Stop
+            Set-TemplateToken -Path (Join-Path -Path $AppFolder -ChildPath 'Intune-D-AppDetection.ps1') -Values @{
+                NAME    = $Name
+                VERSION = $Version.ToString()
+            }
 
             Write-Output "The application '$Name' has been successfully packaged.`nThis can be found in the folder '$AppFolder'."
 
@@ -213,7 +217,8 @@ function New-APFDeployment {
                     Write-Output "The application '$Name' was also packaged to an intunewin file.`nThis can be found at '$($Package.FullName)'."
                 }
             }
-            Write-Output "When publishing the application to Intune, use`n'powershell.exe -ExecutionPolicy RemoteSigned -File Intune-I-MainInstaller.ps1' for the install Command and`n'powershell.exe -ExecutionPolicy RemoteSigned -File Intune-I-MainInstaller.ps1 -Uninstall' for the Uninstall Command."
+            $CommandLine = Get-APFCommandLine
+            Write-Output "When publishing the application to Intune, use`n'$($CommandLine.InstallCommand)' for the install command and`n'$($CommandLine.UninstallCommand)' for the uninstall command."
             Invoke-TelemetryCollection @TelemetryArgs -Stage End
         }
         catch {

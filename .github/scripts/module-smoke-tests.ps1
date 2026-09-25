@@ -31,7 +31,7 @@ try {
     }
 
     Set-Content -Path (Join-Path -Path $workFolder -ChildPath 'setup.exe') -Value 'smoke'
-    $packageFile = New-PackageJSON -PackageName 'Smoke' -Version '1.0' -Description 'Smoke test' -Author 'CI' -SourceDirectory $workFolder -MainInstaller 'setup.exe'
+    $packageFile = New-PackageJSON -PackageName 'Smoke' -Version '1.0' -Description 'Smoke test' -Author 'CI' -SourceDirectory $workFolder -MainInstaller 'setup.exe' -WarningAction SilentlyContinue
     $package = Get-Content -Path $packageFile.FullName -Raw | ConvertFrom-Json
     if ($package.PackageName -ne 'Smoke' -or $package.MainInstaller -ne 'setup.exe' -or $package.AllFiles -ne 'setup.exe') {
         throw "New-PackageJSON wrote unexpected content: $($package | Out-String)"
