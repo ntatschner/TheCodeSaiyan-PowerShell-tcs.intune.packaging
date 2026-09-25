@@ -1,7 +1,7 @@
 ---
 external help file: tcs.intune.packaging-help.xml
 Module Name: tcs.intune.packaging
-online version: https://github.com/microsoft/Microsoft-Win32-Content-Prep-Tool
+online version: https://learn.microsoft.com/graph/api/intune-apps-win32lobapp-get
 schema: 2.0.0
 ---
 
@@ -61,6 +61,16 @@ Any failed entry fails the whole deployment.
   Files                   The files to deploy (PowerShellProfiles and Files).
   FilesDirectoryName      The name of the directory the files are deployed to.
 
+When the package folder already exists you are asked before it is deleted and recreated; when
+you decline, that deployment is skipped with a warning.
+The package folder is always a
+subfolder of DestinationFolder: Name must not be '.' or '..', contain path separators, wildcard
+characters (\[ \]) or characters that Windows does not allow in file names (\< \> : " | ?
+*), or
+end with a space or a dot.
+Name, Version and the other dynamic parameters can be bound from the
+pipeline by property name, one package per input object.
+
 Script-App, Script-User and Custom packages use the "script" template: the main installer runs
 the pre-install script, the deployment script and the post-install script (each with -Uninstall
 for the uninstall command) and saves the configuration that the detection script checks.
@@ -99,17 +109,14 @@ Script-App, Script-User, StandAlone-Exe, Standalone-Application, WindowsFeature 
 Script-App, Script-User and Custom build a script package; see the description.
 
 ```yaml
-Type:String
-Parameter Sets:   (All)
+Type: String
+Parameter Sets: (All)
 Aliases:
+
 Required: True
-Position: 1Default
-Default value: None
+Position: 1
 Default value: None
 Accept pipeline input: False
-input:False
-Accept pipeline input: False
-Accept wildcard characters: False
 Accept wildcard characters: False
 ```
 
@@ -118,18 +125,14 @@ Shows what would happen if the cmdlet runs.
 The cmdlet is not run.
 
 ```yaml
-Type:Switch
-Parameter Sets:   (All)
-Aliases:wi
+Type: SwitchParameter
+Parameter Sets: (All)
+Aliases: wi
+
 Required: False
-Position:Named
-Default value: None
-Default value: None
+Position: Named
 Default value: None
 Accept pipeline input: False
-input:False
-Accept pipeline input: False
-Accept wildcard characters: False
 Accept wildcard characters: False
 ```
 
@@ -137,18 +140,14 @@ Accept wildcard characters: False
 Prompts you for confirmation before running the cmdlet.
 
 ```yaml
-Type:Switch
-Parameter Sets:   (All)
-Aliases:cf
+Type: SwitchParameter
+Parameter Sets: (All)
+Aliases: cf
+
 Required: False
-Position:Named
-Default value: None
-Default value: None
+Position: Named
 Default value: None
 Accept pipeline input: False
-input:False
-Accept pipeline input: False
-Accept wildcard characters: False
 Accept wildcard characters: False
 ```
 
@@ -156,18 +155,14 @@ Accept wildcard characters: False
 {{ Fill ProgressAction Description }}
 
 ```yaml
-Type:ActionPreference
-Parameter Sets:   (All)
-Aliases:proga
+Type: ActionPreference
+Parameter Sets: (All)
+Aliases: proga
+
 Required: False
-Position:Named
-Default value: None
-Default value: None
+Position: Named
 Default value: None
 Accept pipeline input: False
-input:False
-Accept pipeline input: False
-Accept wildcard characters: False
 Accept wildcard characters: False
 ```
 

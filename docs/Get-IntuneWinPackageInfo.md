@@ -5,51 +5,52 @@ online version: https://learn.microsoft.com/graph/api/intune-apps-win32lobapp-ge
 schema: 2.0.0
 ---
 
-# Get-MSIProperty
+# Get-IntuneWinPackageInfo
 
 ## SYNOPSIS
-Reads the Property table of a Windows Installer (.msi) database.
+Reads the metadata of a .intunewin package.
 
 ## SYNTAX
 
 ```
-Get-MSIProperty [-Path] <String> [-ProgressAction <ActionPreference>] [<CommonParameters>]
+Get-IntuneWinPackageInfo [-Path] <String> [-ProgressAction <ActionPreference>] [<CommonParameters>]
 ```
 
 ## DESCRIPTION
-The Get-MSIProperty function opens an MSI database read-only with the WindowsInstaller.Installer
-COM object and returns every row of its Property table (for example ProductName, ProductVersion,
-ProductCode and Manufacturer) as the properties of a single object.
+The Get-IntuneWinPackageInfo function opens a .intunewin file (a zip archive) and reads
+Metadata/Detection.xml, which IntuneWinAppUtil.exe writes: the setup file, the size of the
+content before and after encryption, the tool version and, for MSI setup files, the MSI
+details.
+It works on every platform; the package is not extracted.
 
-This function needs Windows, because it uses the Windows Installer COM object.
-The alias Get-MSIProperties is kept for compatibility with earlier versions.
+The encryption keys in Detection.xml are not returned.
 
 ## EXAMPLES
 
 ### EXAMPLE 1
 ```
-Get-MSIProperty -Path .\setup.msi | Select-Object ProductName, ProductVersion, ProductCode
+Get-IntuneWinPackageInfo -Path .\setup.intunewin
 ```
 
-Returns the product name, version and product code of setup.msi.
+Shows the setup file and content sizes of setup.intunewin.
 
 ### EXAMPLE 2
 ```
-Get-ChildItem -Path C:\Installers -Filter *.msi | Get-MSIProperty
+Get-ChildItem -Path C:\Packages -Filter *.intunewin | Get-IntuneWinPackageInfo | Format-Table SetupFile, UnencryptedContentSize
 ```
 
-Returns the properties of every MSI file in C:\Installers.
+Lists the setup file of every package in C:\Packages.
 
 ## PARAMETERS
 
 ### -Path
-The path to the .msi file.
-Accepts pipeline input, including FileInfo objects from Get-ChildItem.
+The path to the .intunewin file.
+Accepts pipeline input (for example from Get-ChildItem).
 
 ```yaml
 Type: String
 Parameter Sets: (All)
-Aliases: Filename, MSIDbName, Database, Msi, FullName
+Aliases: FullName
 
 Required: True
 Position: 1
@@ -78,12 +79,11 @@ This cmdlet supports the common parameters: -Debug, -ErrorAction, -ErrorVariable
 
 ## INPUTS
 
-### System.String
-### System.IO.FileInfo
 ## OUTPUTS
 
 ### System.Management.Automation.PSCustomObject
+### Path, Name, FileName, SetupFile, UnencryptedContentSize, EncryptedContentSize, ToolVersion and
+### MsiInfo ($null for other setup files).
 ## NOTES
-Author: Nigel Tatschner
 
 ## RELATED LINKS

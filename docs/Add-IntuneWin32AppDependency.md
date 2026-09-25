@@ -1,47 +1,53 @@
 ---
 external help file: tcs.intune.packaging-help.xml
 Module Name: tcs.intune.packaging
-online version: https://learn.microsoft.com/graph/api/intune-apps-win32lobapp-update
+online version: https://learn.microsoft.com/graph/api/resources/intune-apps-mobileappdependency?view=graph-rest-beta
 schema: 2.0.0
 ---
 
-# Start-DownloadFile
+# Add-IntuneWin32AppDependency
 
 ## SYNOPSIS
-Downloads a file from a URL and saves it in a folder.
+Makes a Win32 app depend on other Win32 apps in Microsoft Intune.
 
 ## SYNTAX
 
 ```
-Start-DownloadFile [-URL] <String> [-Path] <String> [-Name] <String> [-ProgressAction <ActionPreference>]
- [-WhatIf] [-Confirm] [<CommonParameters>]
+Add-IntuneWin32AppDependency [-Id] <String> [-DependsOnAppId] <String[]> [[-DependencyType] <String>]
+ [-ProgressAction <ActionPreference>] [-WhatIf] [-Confirm] [<CommonParameters>]
 ```
 
 ## DESCRIPTION
-The Start-DownloadFile function downloads the file at URL and saves it as Name in the folder Path.
-The folder is created when it does not exist.
-Download progress is shown by Invoke-WebRequest.
-A failed download throws a terminating error and no partial file is left behind.
+The Add-IntuneWin32AppDependency function adds dependency relationships to the app Id: it
+depends on each app in DependsOnAppId.
+With DependencyType autoInstall (default) Intune installs
+a missing dependency before the app; with detect the app is only installed when the dependency
+is already detected.
 
-Deprecated: no other command in this module uses Start-DownloadFile, and it may be removed in a
-future version.
-Use Invoke-WebRequest -OutFile instead.
-A deprecation warning is written each
-time it runs.
+It uses the Microsoft Graph beta action updateRelationships
+(POST /deviceAppManagement/mobileApps/{id}/updateRelationships with
+#microsoft.graph.mobileAppDependency), which is not available in Graph v1.0.
+The app's
+existing supersedence and dependency relationships are kept; a relationship to the same app is
+replaced.
+
+Requires the Microsoft.Graph.Authentication module and a connection made with
+Connect-MgGraph -Scopes DeviceManagementApps.ReadWrite.All.
 
 ## EXAMPLES
 
 ### EXAMPLE 1
 ```
-Start-DownloadFile -URL 'https://example.com/setup.msi' -Path 'C:\Temp\Downloads' -Name 'setup.msi'
+Add-IntuneWin32AppDependency -Id $app.id -DependsOnAppId $runtime.id
 ```
 
-Downloads setup.msi to C:\Temp\Downloads\setup.msi.
+Makes the app depend on the runtime app; Intune installs the runtime first when it is missing.
 
 ## PARAMETERS
 
-### -URL
-The URL of the file to download.
+### -Id
+The ID of the app that has the dependencies.
+Accepts pipeline input by property name (id).
 
 ```yaml
 Type: String
@@ -51,16 +57,15 @@ Aliases:
 Required: True
 Position: 1
 Default value: None
-Accept pipeline input: False
+Accept pipeline input: True (ByPropertyName)
 Accept wildcard characters: False
 ```
 
-### -Path
-The folder where the file is saved.
-It is created when it does not exist.
+### -DependsOnAppId
+The IDs of the apps that the app depends on.
 
 ```yaml
-Type: String
+Type: String[]
 Parameter Sets: (All)
 Aliases:
 
@@ -71,17 +76,17 @@ Accept pipeline input: False
 Accept wildcard characters: False
 ```
 
-### -Name
-The file name to save the download as, including the file extension.
+### -DependencyType
+autoInstall (default) or detect.
 
 ```yaml
 Type: String
 Parameter Sets: (All)
 Aliases:
 
-Required: True
+Required: False
 Position: 3
-Default value: None
+Default value: AutoInstall
 Accept pipeline input: False
 Accept wildcard characters: False
 ```
@@ -141,8 +146,8 @@ This cmdlet supports the common parameters: -Debug, -ErrorAction, -ErrorVariable
 
 ### None
 ## NOTES
-Originally based on a function by Nickolaj Andersen (@NickolajA).
-Since 0.3.0 the download uses Invoke-WebRequest instead of System.Net.WebClient events and no
-longer creates global variables.
 
 ## RELATED LINKS
+
+[https://learn.microsoft.com/graph/api/resources/intune-apps-mobileappdependency?view=graph-rest-beta](https://learn.microsoft.com/graph/api/resources/intune-apps-mobileappdependency?view=graph-rest-beta)
+

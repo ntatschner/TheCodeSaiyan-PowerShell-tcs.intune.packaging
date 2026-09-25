@@ -1,7 +1,7 @@
 ---
 external help file: tcs.intune.packaging-help.xml
 Module Name: tcs.intune.packaging
-online version: https://github.com/microsoft/Microsoft-Win32-Content-Prep-Tool
+online version: https://learn.microsoft.com/graph/api/intune-apps-win32lobapp-get
 schema: 2.0.0
 ---
 
@@ -18,9 +18,10 @@ New-IntuneApplication [-ApplicationName] <String> [-SourceFiles] <String[]> [-Ma
  [[-Developer] <String>] [[-Owner] <String>] [[-Notes] <String>] [[-LogoPath] <String>]
  [[-InstallFor] <String>] [[-RestartBehavior] <String>] [[-IsFeatured] <Boolean>] [-InstallCommand] <String>
  [-UninstallCommand] <String> [[-RequirementRuleConfig] <Hashtable>] [-DetectionRuleConfig] <Hashtable>
- [-AssignmentType] <String> [[-AssignmentGroup] <String>] [[-FilterRuleType] <String>] [[-FilterRule] <String>]
- [-Publish] [[-IntuneToolsPath] <String>] [-Overwrite] [-NoJson] [-NoIntuneWin] [-NoCleanUp]
- [-ProgressAction <ActionPreference>] [-WhatIf] [-Confirm] [<CommonParameters>]
+ [-AssignmentType] <String> [[-AssignmentGroup] <String>] [[-AssignmentIntent] <String>]
+ [[-FilterRuleType] <String>] [[-FilterRule] <String>] [-Publish] [[-IntuneToolsPath] <String>]
+ [-AllowDownload] [-Overwrite] [-NoJson] [-NoIntuneWin] [-NoCleanUp] [-ProgressAction <ActionPreference>]
+ [-WhatIf] [-Confirm] [<CommonParameters>]
 ```
 
 ## DESCRIPTION
@@ -50,36 +51,32 @@ Creates only the JSON configuration file for version 2.1.
 The name of the application to be packaged.
 
 ```yaml
-Type:String
-Parameter Sets:   (All)
+Type: String
+Parameter Sets: (All)
 Aliases:
+
 Required: True
-Position: 1Default
-Default value: None
+Position: 1
 Default value: None
 Accept pipeline input: False
-input:False
-Accept pipeline input: False
-Accept wildcard characters: False
 Accept wildcard characters: False
 ```
 
 ### -SourceFiles
-The source files for the package: either one folder that contains all files, or one or more files.
-When several files are given they are copied to "\<OutputFolder\>/\<ApplicationName\>.\<Version\>" first.
+The source files for the package: either one folder that contains all files, or one or more files
+and folders.
+When several are given they are copied (folders with their contents) to a temporary
+staging folder, which is removed after the .intunewin package is created.
 
 ```yaml
 Type: String[]
-Parameter Sets:   (All)
+Parameter Sets: (All)
 Aliases:
+
 Required: True
-Position: 2Default
-Default value: None
+Position: 2
 Default value: None
 Accept pipeline input: False
-input:False
-Accept pipeline input: False
-Accept wildcard characters: False
 Accept wildcard characters: False
 ```
 
@@ -89,17 +86,14 @@ It must be one of
 the source files, or be inside the source folder.
 
 ```yaml
-Type:String
-Parameter Sets:   (All)
+Type: String
+Parameter Sets: (All)
 Aliases:
+
 Required: True
-Position: 3Default
-Default value: None
+Position: 3
 Default value: None
 Accept pipeline input: False
-input:False
-Accept pipeline input: False
-Accept wildcard characters: False
 Accept wildcard characters: False
 ```
 
@@ -108,17 +102,14 @@ The existing folder where the JSON and .intunewin files are created.
 Default is the current directory.
 
 ```yaml
-Type:String
-Parameter Sets:   (All)
+Type: String
+Parameter Sets: (All)
 Aliases:
+
 Required: False
-Position: 4Default
-Default value: None
+Position: 4
 Default value: $($PWD.Path)
 Accept pipeline input: False
-input:False
-Accept pipeline input: False
-Accept wildcard characters: False
 Accept wildcard characters: False
 ```
 
@@ -128,17 +119,14 @@ Default is a Markdown summary of ApplicationName, Publisher,
 Version, Developer and Notes.
 
 ```yaml
-Type:String
-Parameter Sets:   (All)
+Type: String
+Parameter Sets: (All)
 Aliases:
+
 Required: False
-Position: 5Default
-Default value: None
+Position: 5
 Default value: None
 Accept pipeline input: False
-input:False
-Accept pipeline input: False
-Accept wildcard characters: False
 Accept wildcard characters: False
 ```
 
@@ -147,17 +135,14 @@ The publisher of the application.
 Default is the current user name.
 
 ```yaml
-Type:String
-Parameter Sets:   (All)
+Type: String
+Parameter Sets: (All)
 Aliases:
+
 Required: False
-Position: 6Default
-Default value: None
+Position: 6
 Default value: [Environment]::UserName
 Accept pipeline input: False
-input:False
-Accept pipeline input: False
-Accept wildcard characters: False
 Accept wildcard characters: False
 ```
 
@@ -166,17 +151,14 @@ The version of the application.
 Default is "1.0".
 
 ```yaml
-Type:String
-Parameter Sets:   (All)
+Type: String
+Parameter Sets: (All)
 Aliases:
+
 Required: False
-Position: 7Default
-Default value: None
+Position: 7
 Default value: 1.0
 Accept pipeline input: False
-input:False
-Accept pipeline input: False
-Accept wildcard characters: False
 Accept wildcard characters: False
 ```
 
@@ -185,17 +167,14 @@ The developer of the application.
 Default is the current user name.
 
 ```yaml
-Type:String
-Parameter Sets:   (All)
+Type: String
+Parameter Sets: (All)
 Aliases:
+
 Required: False
-Position: 8Default
-Default value: None
+Position: 8
 Default value: [Environment]::UserName
 Accept pipeline input: False
-input:False
-Accept pipeline input: False
-Accept wildcard characters: False
 Accept wildcard characters: False
 ```
 
@@ -203,17 +182,14 @@ Accept wildcard characters: False
 The owner of the application.
 
 ```yaml
-Type:String
-Parameter Sets:   (All)
+Type: String
+Parameter Sets: (All)
 Aliases:
+
 Required: False
-Position: 9Default
-Default value: None
+Position: 9
 Default value: None
 Accept pipeline input: False
-input:False
-Accept pipeline input: False
-Accept wildcard characters: False
 Accept wildcard characters: False
 ```
 
@@ -221,17 +197,14 @@ Accept wildcard characters: False
 Additional notes about the application.
 
 ```yaml
-Type:String
-Parameter Sets:   (All)
+Type: String
+Parameter Sets: (All)
 Aliases:
+
 Required: False
-Position: 10Default
-Default value: None
+Position: 10
 Default value: None
 Accept pipeline input: False
-input:False
-Accept pipeline input: False
-Accept wildcard characters: False
 Accept wildcard characters: False
 ```
 
@@ -239,17 +212,14 @@ Accept wildcard characters: False
 Path to the application logo: a PNG or JPG image of at most 256x256 pixels.
 
 ```yaml
-Type:String
-Parameter Sets:   (All)
+Type: String
+Parameter Sets: (All)
 Aliases:
+
 Required: False
-Position: 11Default
-Default value: None
+Position: 11
 Default value: None
 Accept pipeline input: False
-input:False
-Accept pipeline input: False
-Accept wildcard characters: False
 Accept wildcard characters: False
 ```
 
@@ -258,17 +228,14 @@ The installation context: "User" or "System".
 Default is "System".
 
 ```yaml
-Type:String
-Parameter Sets:   (All)
+Type: String
+Parameter Sets: (All)
 Aliases:
+
 Required: False
-Position: 12Default
-Default value: None
+Position: 12
 Default value: System
 Accept pipeline input: False
-input:False
-Accept pipeline input: False
-Accept wildcard characters: False
 Accept wildcard characters: False
 ```
 
@@ -276,17 +243,14 @@ Accept wildcard characters: False
 The device restart behaviour: basedOnReturnCode (default), allow, suppress or force.
 
 ```yaml
-Type:String
-Parameter Sets:   (All)
+Type: String
+Parameter Sets: (All)
 Aliases:
+
 Required: False
-Position: 13Default
-Default value: None
+Position: 13
 Default value: BasedOnReturnCode
 Accept pipeline input: False
-input:False
-Accept pipeline input: False
-Accept wildcard characters: False
 Accept wildcard characters: False
 ```
 
@@ -295,17 +259,14 @@ Whether the application is featured in the Company Portal.
 Default is $false.
 
 ```yaml
-Type:Boolean
-Parameter Sets:   (All)
+Type: Boolean
+Parameter Sets: (All)
 Aliases:
+
 Required: False
-Position: 14Default
-Default value: None
+Position: 14
 Default value: False
 Accept pipeline input: False
-input:False
-Accept pipeline input: False
-Accept wildcard characters: False
 Accept wildcard characters: False
 ```
 
@@ -313,17 +274,14 @@ Accept wildcard characters: False
 The command line that installs the application.
 
 ```yaml
-Type:String
-Parameter Sets:   (All)
+Type: String
+Parameter Sets: (All)
 Aliases:
+
 Required: True
-Position: 15Default
-Default value: None
+Position: 15
 Default value: None
 Accept pipeline input: False
-input:False
-Accept pipeline input: False
-Accept wildcard characters: False
 Accept wildcard characters: False
 ```
 
@@ -331,17 +289,14 @@ Accept wildcard characters: False
 The command line that uninstalls the application.
 
 ```yaml
-Type:String
-Parameter Sets:   (All)
+Type: String
+Parameter Sets: (All)
 Aliases:
+
 Required: True
-Position: 16Default
-Default value: None
+Position: 16
 Default value: None
 Accept pipeline input: False
-input:False
-Accept pipeline input: False
-Accept wildcard characters: False
 Accept wildcard characters: False
 ```
 
@@ -349,17 +304,14 @@ Accept wildcard characters: False
 A hashtable that describes the requirement rules; written to the JSON file.
 
 ```yaml
-Type:Hashtable
-Parameter Sets:   (All)
+Type: Hashtable
+Parameter Sets: (All)
 Aliases:
+
 Required: False
-Position: 17Default
-Default value: None
+Position: 17
 Default value: None
 Accept pipeline input: False
-input:False
-Accept pipeline input: False
-Accept wildcard characters: False
 Accept wildcard characters: False
 ```
 
@@ -367,132 +319,150 @@ Accept wildcard characters: False
 A hashtable that describes the detection rules (for example from New-IntuneWin32Rule); written to the JSON file.
 
 ```yaml
-Type:Hashtable
-Parameter Sets:   (All)
+Type: Hashtable
+Parameter Sets: (All)
 Aliases:
+
 Required: True
-Position: 18Default
-Default value: None
+Position: 18
 Default value: None
 Accept pipeline input: False
-input:False
-Accept pipeline input: False
-Accept wildcard characters: False
 Accept wildcard characters: False
 ```
 
 ### -AssignmentType
 How the application is assigned: User-Group, Device-Group, All-Users or All-Devices.
+Written to
+the JSON file; Publish-IntuneAppPackage (and -Publish) assigns the app with it.
 
 ```yaml
-Type:String
-Parameter Sets:   (All)
+Type: String
+Parameter Sets: (All)
 Aliases:
+
 Required: True
-Position: 19Default
-Default value: None
+Position: 19
 Default value: None
 Accept pipeline input: False
-input:False
-Accept pipeline input: False
-Accept wildcard characters: False
 Accept wildcard characters: False
 ```
 
 ### -AssignmentGroup
-The group the application is assigned to, for the User-Group and Device-Group assignment types.
+The group (ID or display name) the application is assigned to, for the User-Group and
+Device-Group assignment types.
 
 ```yaml
-Type:String
-Parameter Sets:   (All)
+Type: String
+Parameter Sets: (All)
 Aliases:
+
 Required: False
-Position: 20Default
+Position: 20
 Default value: None
-Default value: None
-Accept pipeline input: False
-input:False
 Accept pipeline input: False
 Accept wildcard characters: False
+```
+
+### -AssignmentIntent
+The assignment intent: required (default), available or uninstall.
+
+```yaml
+Type: String
+Parameter Sets: (All)
+Aliases:
+
+Required: False
+Position: 21
+Default value: Required
+Accept pipeline input: False
 Accept wildcard characters: False
 ```
 
 ### -FilterRuleType
 Whether the assignment filter includes or excludes devices: Include or Exclude.
+Use with FilterRule.
 
 ```yaml
-Type:String
-Parameter Sets:   (All)
+Type: String
+Parameter Sets: (All)
 Aliases:
+
 Required: False
-Position: 21Default
-Default value: None
+Position: 22
 Default value: None
 Accept pipeline input: False
-input:False
-Accept pipeline input: False
-Accept wildcard characters: False
 Accept wildcard characters: False
 ```
 
 ### -FilterRule
-The assignment filter rule.
+The name or ID of an existing Intune assignment filter.
+Use with FilterRuleType.
 
 ```yaml
-Type:String
-Parameter Sets:   (All)
+Type: String
+Parameter Sets: (All)
 Aliases:
+
 Required: False
-Position: 22Default
-Default value: None
+Position: 23
 Default value: None
 Accept pipeline input: False
-input:False
-Accept pipeline input: False
-Accept wildcard characters: False
 Accept wildcard characters: False
 ```
 
 ### -Publish
-Publishes the package to Intune with Publish-IntuneAppPackage after creating it.
-DetectionRuleConfig
-(and RequirementRuleConfig) must then be rules created with New-IntuneWin32Rule.
-With -Overwrite an
-existing app with the same name gets the package as a new content version.
+Publishes the package to Intune with Publish-IntuneAppPackage after creating it and assigns it
+as set by AssignmentType, AssignmentGroup, AssignmentIntent and the filter parameters.
+DetectionRuleConfig (and RequirementRuleConfig) must then be rules created with
+New-IntuneWin32Rule.
+With -Overwrite an existing app with the same name gets the package as a
+new content version and its properties are updated.
+The assignment settings are checked before
+anything is built.
 
 ```yaml
-Type:Switch
-Parameter Sets:   (All)
+Type: SwitchParameter
+Parameter Sets: (All)
 Aliases:
+
 Required: False
-Position:Named
-Default value: None
-Default value: None
+Position: Named
 Default value: False
 Accept pipeline input: False
-input:False
-Accept pipeline input: False
-Accept wildcard characters: False
 Accept wildcard characters: False
 ```
 
 ### -IntuneToolsPath
 The path to IntuneWinAppUtil.exe.
-When the file does not exist, release v1.8.6 of the tool is
-downloaded to the per-user tool folder (LocalApplicationData\tcs.intune.packaging) and used.
+When the file does not exist, the tool in the per-user tool
+folder (LocalApplicationData\tcs.intune.packaging) is used; when it is missing there too you are
+asked before release v1.8.6 is downloaded (see AllowDownload).
 
 ```yaml
-Type:String
-Parameter Sets:   (All)
+Type: String
+Parameter Sets: (All)
 Aliases:
+
 Required: False
-Position: 23Default
-Default value: None
+Position: 24
 Default value: (Get-IntuneWinAppUtilPath)
 Accept pipeline input: False
-input:False
-Accept pipeline input: False
 Accept wildcard characters: False
+```
+
+### -AllowDownload
+Download IntuneWinAppUtil.exe to the per-user tool folder without asking when it is missing.
+The download is refused unless it is signed by Microsoft (see Get-IntunePackagingTool).
+
+```yaml
+Type: SwitchParameter
+Parameter Sets: (All)
+Aliases:
+
+Required: False
+Position: Named
+Default value: False
+Accept pipeline input: False
 Accept wildcard characters: False
 ```
 
@@ -500,18 +470,14 @@ Accept wildcard characters: False
 Overwrite existing JSON and .intunewin files in OutputFolder.
 
 ```yaml
-Type:Switch
-Parameter Sets:   (All)
+Type: SwitchParameter
+Parameter Sets: (All)
 Aliases:
+
 Required: False
-Position:Named
-Default value: None
-Default value: None
+Position: Named
 Default value: False
 Accept pipeline input: False
-input:False
-Accept pipeline input: False
-Accept wildcard characters: False
 Accept wildcard characters: False
 ```
 
@@ -519,18 +485,14 @@ Accept wildcard characters: False
 Do not create the JSON configuration file.
 
 ```yaml
-Type:Switch
-Parameter Sets:   (All)
+Type: SwitchParameter
+Parameter Sets: (All)
 Aliases:
+
 Required: False
-Position:Named
-Default value: None
-Default value: None
+Position: Named
 Default value: False
 Accept pipeline input: False
-input:False
-Accept pipeline input: False
-Accept wildcard characters: False
 Accept wildcard characters: False
 ```
 
@@ -538,18 +500,14 @@ Accept wildcard characters: False
 Do not create the .intunewin package.
 
 ```yaml
-Type:Switch
-Parameter Sets:   (All)
+Type: SwitchParameter
+Parameter Sets: (All)
 Aliases:
+
 Required: False
-Position:Named
-Default value: None
-Default value: None
+Position: Named
 Default value: False
 Accept pipeline input: False
-input:False
-Accept pipeline input: False
-Accept wildcard characters: False
 Accept wildcard characters: False
 ```
 
@@ -557,18 +515,14 @@ Accept wildcard characters: False
 Keep the JSON file and .intunewin package after a successful -Publish (they are removed by default).
 
 ```yaml
-Type:Switch
-Parameter Sets:   (All)
+Type: SwitchParameter
+Parameter Sets: (All)
 Aliases:
+
 Required: False
-Position:Named
-Default value: None
-Default value: None
+Position: Named
 Default value: False
 Accept pipeline input: False
-input:False
-Accept pipeline input: False
-Accept wildcard characters: False
 Accept wildcard characters: False
 ```
 
@@ -577,18 +531,14 @@ Shows what would happen if the cmdlet runs.
 The cmdlet is not run.
 
 ```yaml
-Type:Switch
-Parameter Sets:   (All)
-Aliases:wi
+Type: SwitchParameter
+Parameter Sets: (All)
+Aliases: wi
+
 Required: False
-Position:Named
-Default value: None
-Default value: None
+Position: Named
 Default value: None
 Accept pipeline input: False
-input:False
-Accept pipeline input: False
-Accept wildcard characters: False
 Accept wildcard characters: False
 ```
 
@@ -596,18 +546,14 @@ Accept wildcard characters: False
 Prompts you for confirmation before running the cmdlet.
 
 ```yaml
-Type:Switch
-Parameter Sets:   (All)
-Aliases:cf
+Type: SwitchParameter
+Parameter Sets: (All)
+Aliases: cf
+
 Required: False
-Position:Named
-Default value: None
-Default value: None
+Position: Named
 Default value: None
 Accept pipeline input: False
-input:False
-Accept pipeline input: False
-Accept wildcard characters: False
 Accept wildcard characters: False
 ```
 
@@ -615,18 +561,14 @@ Accept wildcard characters: False
 {{ Fill ProgressAction Description }}
 
 ```yaml
-Type:ActionPreference
-Parameter Sets:   (All)
-Aliases:proga
+Type: ActionPreference
+Parameter Sets: (All)
+Aliases: proga
+
 Required: False
-Position:Named
-Default value: None
-Default value: None
+Position: Named
 Default value: None
 Accept pipeline input: False
-input:False
-Accept pipeline input: False
-Accept wildcard characters: False
 Accept wildcard characters: False
 ```
 

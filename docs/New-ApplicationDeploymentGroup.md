@@ -1,7 +1,7 @@
 ---
 external help file: tcs.intune.packaging-help.xml
 Module Name: tcs.intune.packaging
-online version: https://github.com/microsoft/Microsoft-Win32-Content-Prep-Tool
+online version: https://learn.microsoft.com/graph/api/intune-apps-win32lobapp-get
 schema: 2.0.0
 ---
 
@@ -28,6 +28,10 @@ where \<Name\> is the application name in title case without spaces.
 By default the group list is returned.
 With -CreateGroups the groups are created in Entra ID
 (existing groups are skipped), optionally added to an administrative unit and given members.
+A group whose existence cannot be checked (for example because the lookup fails) is not
+created.
+Every failure for a group (lookup, creation, administrative unit, member) is written
+as a non-terminating error and the other groups are still processed.
 With -CreateFile the list is also exported to Application-Groups.csv in Destination.
 
 Creating groups needs the Microsoft.Entra module (Get-EntraGroup, New-EntraGroup,
@@ -67,17 +71,13 @@ Multiple names can be provided.
 
 ```yaml
 Type: String[]
-Parameter Sets:   (All)
+Parameter Sets: (All)
 Aliases:
+
 Required: True
-Position:Named
-Default value: None
-Default value: None
+Position: Named
 Default value: None
 Accept pipeline input: False
-input:False
-Accept pipeline input: False
-Accept wildcard characters: False
 Accept wildcard characters: False
 ```
 
@@ -85,18 +85,14 @@ Accept wildcard characters: False
 Create the groups in Entra ID.
 
 ```yaml
-Type:Switch
-Parameter Sets:   (All)
+Type: SwitchParameter
+Parameter Sets: (All)
 Aliases:
+
 Required: False
-Position:Named
-Default value: None
-Default value: None
+Position: Named
 Default value: False
 Accept pipeline input: False
-input:False
-Accept pipeline input: False
-Accept wildcard characters: False
 Accept wildcard characters: False
 ```
 
@@ -104,18 +100,14 @@ Accept wildcard characters: False
 Export the group list to Application-Groups.csv in Destination.
 
 ```yaml
-Type:Switch
-Parameter Sets:   (All)
+Type: SwitchParameter
+Parameter Sets: (All)
 Aliases:
+
 Required: False
-Position:Named
-Default value: None
-Default value: None
+Position: Named
 Default value: False
 Accept pipeline input: False
-input:False
-Accept pipeline input: False
-Accept wildcard characters: False
 Accept wildcard characters: False
 ```
 
@@ -124,18 +116,14 @@ The folder for Application-Groups.csv when using -CreateFile.
 Must be an existing folder.
 
 ```yaml
-Type:String
-Parameter Sets:   (All)
+Type: String
+Parameter Sets: (All)
 Aliases:
+
 Required: False
-Position:Named
-Default value: None
-Default value: None
+Position: Named
 Default value: None
 Accept pipeline input: False
-input:False
-Accept pipeline input: False
-Accept wildcard characters: False
 Accept wildcard characters: False
 ```
 
@@ -143,18 +131,14 @@ Accept wildcard characters: False
 The ID of the Entra ID administrative unit that new groups are added to.
 
 ```yaml
-Type:String
-Parameter Sets:   (All)
+Type: String
+Parameter Sets: (All)
 Aliases:
+
 Required: False
-Position:Named
-Default value: None
-Default value: None
+Position: Named
 Default value: None
 Accept pipeline input: False
-input:False
-Accept pipeline input: False
-Accept wildcard characters: False
 Accept wildcard characters: False
 ```
 
@@ -163,17 +147,13 @@ Object IDs of the members to add to the Available groups.
 
 ```yaml
 Type: String[]
-Parameter Sets:   (All)
+Parameter Sets: (All)
 Aliases:
+
 Required: False
-Position:Named
-Default value: None
-Default value: None
+Position: Named
 Default value: None
 Accept pipeline input: False
-input:False
-Accept pipeline input: False
-Accept wildcard characters: False
 Accept wildcard characters: False
 ```
 
@@ -182,17 +162,13 @@ Object IDs of the members to add to the Required groups.
 
 ```yaml
 Type: String[]
-Parameter Sets:   (All)
+Parameter Sets: (All)
 Aliases:
+
 Required: False
-Position:Named
-Default value: None
-Default value: None
+Position: Named
 Default value: None
 Accept pipeline input: False
-input:False
-Accept pipeline input: False
-Accept wildcard characters: False
 Accept wildcard characters: False
 ```
 
@@ -201,17 +177,13 @@ Object IDs of the members to add to the Test groups.
 
 ```yaml
 Type: String[]
-Parameter Sets:   (All)
+Parameter Sets: (All)
 Aliases:
+
 Required: False
-Position:Named
-Default value: None
-Default value: None
+Position: Named
 Default value: None
 Accept pipeline input: False
-input:False
-Accept pipeline input: False
-Accept wildcard characters: False
 Accept wildcard characters: False
 ```
 
@@ -220,17 +192,13 @@ Object IDs of the members to add to the Phase1 groups.
 
 ```yaml
 Type: String[]
-Parameter Sets:   (All)
+Parameter Sets: (All)
 Aliases:
+
 Required: False
-Position:Named
-Default value: None
-Default value: None
+Position: Named
 Default value: None
 Accept pipeline input: False
-input:False
-Accept pipeline input: False
-Accept wildcard characters: False
 Accept wildcard characters: False
 ```
 
@@ -239,18 +207,14 @@ Shows what would happen if the cmdlet runs.
 The cmdlet is not run.
 
 ```yaml
-Type:Switch
-Parameter Sets:   (All)
-Aliases:wi
+Type: SwitchParameter
+Parameter Sets: (All)
+Aliases: wi
+
 Required: False
-Position:Named
-Default value: None
-Default value: None
+Position: Named
 Default value: None
 Accept pipeline input: False
-input:False
-Accept pipeline input: False
-Accept wildcard characters: False
 Accept wildcard characters: False
 ```
 
@@ -258,18 +222,14 @@ Accept wildcard characters: False
 Prompts you for confirmation before running the cmdlet.
 
 ```yaml
-Type:Switch
-Parameter Sets:   (All)
-Aliases:cf
+Type: SwitchParameter
+Parameter Sets: (All)
+Aliases: cf
+
 Required: False
-Position:Named
-Default value: None
-Default value: None
+Position: Named
 Default value: None
 Accept pipeline input: False
-input:False
-Accept pipeline input: False
-Accept wildcard characters: False
 Accept wildcard characters: False
 ```
 
@@ -277,18 +237,14 @@ Accept wildcard characters: False
 {{ Fill ProgressAction Description }}
 
 ```yaml
-Type:ActionPreference
-Parameter Sets:   (All)
-Aliases:proga
+Type: ActionPreference
+Parameter Sets: (All)
+Aliases: proga
+
 Required: False
-Position:Named
-Default value: None
-Default value: None
+Position: Named
 Default value: None
 Accept pipeline input: False
-input:False
-Accept pipeline input: False
-Accept wildcard characters: False
 Accept wildcard characters: False
 ```
 
@@ -300,7 +256,9 @@ This cmdlet supports the common parameters: -Debug, -ErrorAction, -ErrorVariable
 ## OUTPUTS
 
 ### System.Management.Automation.PSCustomObject
-### One object per group (Name, GroupName, GroupDescription) when -CreateGroups is not used.
+### Without -CreateGroups: one object per group with Name, GroupName and GroupDescription.
+### With -CreateGroups: one object per created or existing group with Name, GroupName,
+### GroupDescription, Id and Status ('Created' or 'Exists'). Groups that failed are not returned.
 ## NOTES
 
 ## RELATED LINKS

@@ -1,7 +1,7 @@
 ---
 external help file: tcs.intune.packaging-help.xml
 Module Name: tcs.intune.packaging
-online version: https://github.com/microsoft/Microsoft-Win32-Content-Prep-Tool
+online version: https://learn.microsoft.com/graph/api/intune-apps-win32lobapp-get
 schema: 2.0.0
 ---
 
@@ -29,7 +29,14 @@ For MSI files the name and version are read from the MSI when not supplied (Wind
 For
 EXE files the file name and file version are used.
 
-When the application folder already exists you are asked before it is deleted and recreated.
+When the application folder already exists you are asked before it is deleted and recreated;
+when you decline, the folder is left unchanged and a warning is written.
+
+The name is used as a folder name and is written into the detection script.
+It must not be
+'.' or '..', contain path separators, wildcard characters (\[ \]) or characters that Windows does
+not allow in file names (\< \> : " | ?
+*), or end with a space or a dot.
 
 ## EXAMPLES
 
@@ -56,17 +63,14 @@ folder name.
 When omitted it is read from the installer file.
 
 ```yaml
-Type:String
-Parameter Sets:   (All)
-Aliases: ApplicationName,AppName
+Type: String
+Parameter Sets: (All)
+Aliases: ApplicationName, AppName
+
 Required: False
-Position: 1Default
-Default value: None
+Position: 1
 Default value: None
 Accept pipeline input: False
-input:False
-Accept pipeline input: False
-Accept wildcard characters: False
 Accept wildcard characters: False
 ```
 
@@ -75,17 +79,14 @@ The version of the application in the format x.x.x.x.
 When omitted it is read from the installer file.
 
 ```yaml
-Type:Version
-Parameter Sets:   (All)
-Aliases: ApplicationVersion,AppVersion
+Type: Version
+Parameter Sets: (All)
+Aliases: ApplicationVersion, AppVersion
+
 Required: False
-Position: 2Default
-Default value: None
+Position: 2
 Default value: None
 Accept pipeline input: False
-input:False
-Accept pipeline input: False
-Accept wildcard characters: False
 Accept wildcard characters: False
 ```
 
@@ -94,17 +95,14 @@ The installation context: 'system' or 'user'.
 Default is 'system'.
 
 ```yaml
-Type:String
-Parameter Sets:   (All)
+Type: String
+Parameter Sets: (All)
 Aliases:
+
 Required: False
-Position: 3Default
-Default value: None
+Position: 3
 Default value: System
 Accept pipeline input: False
-input:False
-Accept pipeline input: False
-Accept wildcard characters: False
 Accept wildcard characters: False
 ```
 
@@ -112,17 +110,14 @@ Accept wildcard characters: False
 The command-line switches used to install the application.
 
 ```yaml
-Type:String
-Parameter Sets:   (All)
+Type: String
+Parameter Sets: (All)
 Aliases:
+
 Required: False
-Position: 4Default
-Default value: None
+Position: 4
 Default value: None
 Accept pipeline input: False
-input:False
-Accept pipeline input: False
-Accept wildcard characters: False
 Accept wildcard characters: False
 ```
 
@@ -130,17 +125,14 @@ Accept wildcard characters: False
 The command-line switches used to uninstall the application.
 
 ```yaml
-Type:String
-Parameter Sets:   (All)
+Type: String
+Parameter Sets: (All)
 Aliases:
+
 Required: False
-Position: 5Default
-Default value: None
+Position: 5
 Default value: None
 Accept pipeline input: False
-input:False
-Accept pipeline input: False
-Accept wildcard characters: False
 Accept wildcard characters: False
 ```
 
@@ -148,17 +140,14 @@ Accept wildcard characters: False
 The path to the uninstall executable or file.
 
 ```yaml
-Type:String
-Parameter Sets:   (All)
+Type: String
+Parameter Sets: (All)
 Aliases:
+
 Required: False
-Position: 6Default
-Default value: None
+Position: 6
 Default value: None
 Accept pipeline input: False
-input:False
-Accept pipeline input: False
-Accept wildcard characters: False
 Accept wildcard characters: False
 ```
 
@@ -166,17 +155,14 @@ Accept wildcard characters: False
 The path to the installer file (.msi or .exe).
 
 ```yaml
-Type:String
-Parameter Sets:   (All)
-Aliases: InstallerFile,SourceFile
+Type: String
+Parameter Sets: (All)
+Aliases: InstallerFile, SourceFile
+
 Required: True
-Position: 7Default
-Default value: None
+Position: 7
 Default value: None
 Accept pipeline input: False
-input:False
-Accept pipeline input: False
-Accept wildcard characters: False
 Accept wildcard characters: False
 ```
 
@@ -185,16 +171,13 @@ Paths to additional files to include in the package.
 
 ```yaml
 Type: String[]
-Parameter Sets:   (All)
+Parameter Sets: (All)
 Aliases:
+
 Required: False
-Position: 8Default
-Default value: None
+Position: 8
 Default value: None
 Accept pipeline input: False
-input:False
-Accept pipeline input: False
-Accept wildcard characters: False
 Accept wildcard characters: False
 ```
 
@@ -203,17 +186,14 @@ The folder in which the application folder is created.
 Default is the current directory.
 
 ```yaml
-Type:String
-Parameter Sets:   (All)
+Type: String
+Parameter Sets: (All)
 Aliases:
+
 Required: False
-Position: 9Default
-Default value: None
+Position: 9
 Default value: $PWD.Path
 Accept pipeline input: False
-input:False
-Accept pipeline input: False
-Accept wildcard characters: False
 Accept wildcard characters: False
 ```
 
@@ -223,18 +203,14 @@ IntuneWinAppUtil.exe is downloaded to the
 per-user tool folder (LocalApplicationData\tcs.intune.packaging) after confirmation when it is missing.
 
 ```yaml
-Type:Switch
-Parameter Sets:   (All)
+Type: SwitchParameter
+Parameter Sets: (All)
 Aliases:
+
 Required: False
-Position:Named
-Default value: None
-Default value: None
+Position: Named
 Default value: False
 Accept pipeline input: False
-input:False
-Accept pipeline input: False
-Accept wildcard characters: False
 Accept wildcard characters: False
 ```
 
@@ -243,18 +219,14 @@ Shows what would happen if the cmdlet runs.
 The cmdlet is not run.
 
 ```yaml
-Type:Switch
-Parameter Sets:   (All)
-Aliases:wi
+Type: SwitchParameter
+Parameter Sets: (All)
+Aliases: wi
+
 Required: False
-Position:Named
-Default value: None
-Default value: None
+Position: Named
 Default value: None
 Accept pipeline input: False
-input:False
-Accept pipeline input: False
-Accept wildcard characters: False
 Accept wildcard characters: False
 ```
 
@@ -262,18 +234,14 @@ Accept wildcard characters: False
 Prompts you for confirmation before running the cmdlet.
 
 ```yaml
-Type:Switch
-Parameter Sets:   (All)
-Aliases:cf
+Type: SwitchParameter
+Parameter Sets: (All)
+Aliases: cf
+
 Required: False
-Position:Named
-Default value: None
-Default value: None
+Position: Named
 Default value: None
 Accept pipeline input: False
-input:False
-Accept pipeline input: False
-Accept wildcard characters: False
 Accept wildcard characters: False
 ```
 
@@ -281,18 +249,14 @@ Accept wildcard characters: False
 {{ Fill ProgressAction Description }}
 
 ```yaml
-Type:ActionPreference
-Parameter Sets:   (All)
-Aliases:proga
+Type: ActionPreference
+Parameter Sets: (All)
+Aliases: proga
+
 Required: False
-Position:Named
-Default value: None
-Default value: None
+Position: Named
 Default value: None
 Accept pipeline input: False
-input:False
-Accept pipeline input: False
-Accept wildcard characters: False
 Accept wildcard characters: False
 ```
 

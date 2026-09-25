@@ -1,7 +1,7 @@
 ---
 external help file: tcs.intune.packaging-help.xml
 Module Name: tcs.intune.packaging
-online version: https://github.com/microsoft/Microsoft-Win32-Content-Prep-Tool
+online version: https://learn.microsoft.com/graph/api/intune-apps-win32lobapp-get
 schema: 2.0.0
 ---
 
@@ -49,17 +49,14 @@ Runs mytool.exe in a visible window and checks the exit code.
 The file name or path of the executable to run, including the extension.
 
 ```yaml
-Type:String
-Parameter Sets:   (All)
+Type: String
+Parameter Sets: (All)
 Aliases:
+
 Required: True
-Position: 1Default
-Default value: None
+Position: 1
 Default value: None
 Accept pipeline input: False
-input:False
-Accept pipeline input: False
-Accept wildcard characters: False
 Accept wildcard characters: False
 ```
 
@@ -67,17 +64,14 @@ Accept wildcard characters: False
 The command-line arguments passed to the executable, as a single string.
 
 ```yaml
-Type:String
-Parameter Sets:   (All)
+Type: String
+Parameter Sets: (All)
 Aliases:
+
 Required: False
-Position: 2Default
-Default value: None
+Position: 2
 Default value: None
 Accept pipeline input: False
-input:False
-Accept pipeline input: False
-Accept wildcard characters: False
 Accept wildcard characters: False
 ```
 
@@ -87,17 +81,14 @@ Default is $true.
 Must be $false when UseShellExecute is $true.
 
 ```yaml
-Type:Boolean
-Parameter Sets:   (All)
+Type: Boolean
+Parameter Sets: (All)
 Aliases:
+
 Required: False
-Position: 3Default
-Default value: None
+Position: 3
 Default value: True
 Accept pipeline input: False
-input:False
-Accept pipeline input: False
-Accept wildcard characters: False
 Accept wildcard characters: False
 ```
 
@@ -107,17 +98,14 @@ Default is $true.
 Must be $false when UseShellExecute is $true.
 
 ```yaml
-Type:Boolean
-Parameter Sets:   (All)
+Type: Boolean
+Parameter Sets: (All)
 Aliases:
+
 Required: False
-Position: 4Default
-Default value: None
+Position: 4
 Default value: True
 Accept pipeline input: False
-input:False
-Accept pipeline input: False
-Accept wildcard characters: False
 Accept wildcard characters: False
 ```
 
@@ -126,17 +114,14 @@ Whether the process is started without a new window.
 Default is $true.
 
 ```yaml
-Type:Boolean
-Parameter Sets:   (All)
+Type: Boolean
+Parameter Sets: (All)
 Aliases:
+
 Required: False
-Position: 5Default
-Default value: None
+Position: 5
 Default value: True
 Accept pipeline input: False
-input:False
-Accept pipeline input: False
-Accept wildcard characters: False
 Accept wildcard characters: False
 ```
 
@@ -145,17 +130,14 @@ Whether the operating system shell starts the process.
 Default is $false.
 
 ```yaml
-Type:Boolean
-Parameter Sets:   (All)
+Type: Boolean
+Parameter Sets: (All)
 Aliases:
+
 Required: False
-Position: 6Default
-Default value: None
+Position: 6
 Default value: False
 Accept pipeline input: False
-input:False
-Accept pipeline input: False
-Accept wildcard characters: False
 Accept wildcard characters: False
 ```
 
@@ -163,18 +145,14 @@ Accept wildcard characters: False
 {{ Fill ProgressAction Description }}
 
 ```yaml
-Type:ActionPreference
-Parameter Sets:   (All)
-Aliases:proga
+Type: ActionPreference
+Parameter Sets: (All)
+Aliases: proga
+
 Required: False
-Position:Named
-Default value: None
-Default value: None
+Position: Named
 Default value: None
 Accept pipeline input: False
-input:False
-Accept pipeline input: False
-Accept wildcard characters: False
 Accept wildcard characters: False
 ```
 

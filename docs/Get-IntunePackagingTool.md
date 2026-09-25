@@ -14,19 +14,20 @@ Downloads the Microsoft Win32 Content Prep Tool (IntuneWinAppUtil.exe).
 
 ### Latest (Default)
 ```
-Get-IntunePackagingTool -Path <String> [-Force] [-ProgressAction <ActionPreference>] [<CommonParameters>]
+Get-IntunePackagingTool -Path <String> [-ExpectedSha256 <String>] [-Force] [-ProgressAction <ActionPreference>]
+ [<CommonParameters>]
 ```
 
 ### DownloadTag
 ```
-Get-IntunePackagingTool -Path <String> -DownloadTag <String> [-Force] [-ProgressAction <ActionPreference>]
- [<CommonParameters>]
+Get-IntunePackagingTool -Path <String> -DownloadTag <String> [-ExpectedSha256 <String>] [-Force]
+ [-ProgressAction <ActionPreference>] [<CommonParameters>]
 ```
 
 ### DownloadUrl
 ```
-Get-IntunePackagingTool -Path <String> -DownloadUrl <String> [-Force] [-ProgressAction <ActionPreference>]
- [<CommonParameters>]
+Get-IntunePackagingTool -Path <String> -DownloadUrl <String> [-ExpectedSha256 <String>] [-Force]
+ [-ProgressAction <ActionPreference>] [<CommonParameters>]
 ```
 
 ## DESCRIPTION
@@ -39,6 +40,14 @@ are removed afterwards.
 By default the latest release is downloaded.
 Use DownloadTag to pin a release, or DownloadUrl to
 download a specific zip file.
+
+The downloaded IntuneWinAppUtil.exe is verified before it is copied to Path, and refused when a
+check fails:
+  - On Windows it must have a valid Authenticode signature from Microsoft Corporation
+    (Get-AuthenticodeSignature: Status Valid and O=Microsoft Corporation in the signer subject).
+  - With ExpectedSha256 its SHA256 hash must match.
+Where Authenticode signatures cannot be
+    checked (PowerShell on Linux or macOS), ExpectedSha256 is required.
 
 ## EXAMPLES
 
@@ -56,6 +65,13 @@ Get-IntunePackagingTool -Path "C:\Tools" -DownloadTag 'v1.8.6' -Force
 
 Downloads release v1.8.6 and overwrites an existing C:\Tools\IntuneWinAppUtil.exe.
 
+### EXAMPLE 3
+```
+'
+```
+
+Downloads release v1.8.6 and only keeps IntuneWinAppUtil.exe when its hash matches.
+
 ## PARAMETERS
 
 ### -Path
@@ -63,18 +79,14 @@ The folder that IntuneWinAppUtil.exe is copied to.
 It is created when it does not exist.
 
 ```yaml
-Type:String
-Parameter Sets:   (All)
+Type: String
+Parameter Sets: (All)
 Aliases:
+
 Required: True
-Position:Named
-Default value: None
-Default value: None
+Position: Named
 Default value: None
 Accept pipeline input: False
-input:False
-Accept pipeline input: False
-Accept wildcard characters: False
 Accept wildcard characters: False
 ```
 
@@ -82,18 +94,14 @@ Accept wildcard characters: False
 The release tag to download, for example 'v1.8.6'.
 
 ```yaml
-Type:String
+Type: String
 Parameter Sets: DownloadTag
 Aliases:
+
 Required: True
-Position:Named
-Default value: None
-Default value: None
+Position: Named
 Default value: None
 Accept pipeline input: False
-input:False
-Accept pipeline input: False
-Accept wildcard characters: False
 Accept wildcard characters: False
 ```
 
@@ -103,18 +111,31 @@ Used instead of the GitHub release
 archive.
 
 ```yaml
-Type:String
+Type: String
 Parameter Sets: DownloadUrl
 Aliases:
+
 Required: True
-Position:Named
+Position: Named
 Default value: None
-Default value: None
-Default value: None
-Accept pipeline input: False
-input:False
 Accept pipeline input: False
 Accept wildcard characters: False
+```
+
+### -ExpectedSha256
+The expected SHA256 hash (64 hexadecimal characters) of IntuneWinAppUtil.exe.
+When given, the
+downloaded file must match it.
+
+```yaml
+Type: String
+Parameter Sets: (All)
+Aliases:
+
+Required: False
+Position: Named
+Default value: None
+Accept pipeline input: False
 Accept wildcard characters: False
 ```
 
@@ -122,18 +143,14 @@ Accept wildcard characters: False
 Overwrites IntuneWinAppUtil.exe when it already exists in Path.
 
 ```yaml
-Type:Switch
-Parameter Sets:   (All)
+Type: SwitchParameter
+Parameter Sets: (All)
 Aliases:
+
 Required: False
-Position:Named
-Default value: None
-Default value: None
+Position: Named
 Default value: False
 Accept pipeline input: False
-input:False
-Accept pipeline input: False
-Accept wildcard characters: False
 Accept wildcard characters: False
 ```
 
@@ -141,18 +158,14 @@ Accept wildcard characters: False
 {{ Fill ProgressAction Description }}
 
 ```yaml
-Type:ActionPreference
-Parameter Sets:   (All)
-Aliases:proga
+Type: ActionPreference
+Parameter Sets: (All)
+Aliases: proga
+
 Required: False
-Position:Named
-Default value: None
-Default value: None
+Position: Named
 Default value: None
 Accept pipeline input: False
-input:False
-Accept pipeline input: False
-Accept wildcard characters: False
 Accept wildcard characters: False
 ```
 
