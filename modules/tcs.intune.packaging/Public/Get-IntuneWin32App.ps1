@@ -47,24 +47,18 @@ function Get-IntuneWin32App {
         [string]$Name
     )
     begin {
-        $TelemetryArgs = @{
-            ModuleName    = $MyInvocation.MyCommand.Module.Name
-            ModuleVersion = [string]$MyInvocation.MyCommand.Module.Version
-            CommandName   = $MyInvocation.MyCommand.Name
-            ExecutionID   = [guid]::NewGuid().ToString()
-        }
-        Invoke-TelemetryCollection @TelemetryArgs -Stage Start -ClearTimer
-        $TelemetryFailed = $false
+        $telemetry = Start-TcsTelemetry
+        $lastError = $null
         try {
             $null = Assert-MgGraphConnection
         }
         catch {
-            $TelemetryFailed = $true
-            Invoke-TelemetryCollection @TelemetryArgs -Stage End -Failed $true -Exception $_
+            Complete-TcsTelemetry -Token $telemetry -ErrorRecord $_
             $PSCmdlet.ThrowTerminatingError($_)
         }
     }
     process {
+        $completed = $false
         try {
             switch ($PSCmdlet.ParameterSetName) {
                 'Id' {
@@ -83,18 +77,19 @@ function Get-IntuneWin32App {
                     Get-GraphCollection -Uri "v1.0/deviceAppManagement/mobileApps?`$filter=$([System.Uri]::EscapeDataString("isof('microsoft.graph.win32LobApp')"))"
                 }
             }
+            $completed = $true
         }
         catch {
-            if (-not $TelemetryFailed) {
-                $TelemetryFailed = $true
-                Invoke-TelemetryCollection @TelemetryArgs -Stage End -Failed $true -Exception $_
-            }
+            $lastError = $_
             $PSCmdlet.ThrowTerminatingError($_)
+        }
+        finally {
+            if (-not $completed) {
+                Complete-TcsTelemetry -Token $telemetry -ErrorRecord $lastError
+            }
         }
     }
     end {
-        if (-not $TelemetryFailed) {
-            Invoke-TelemetryCollection @TelemetryArgs -Stage End
-        }
+        Complete-TcsTelemetry -Token $telemetry -ErrorRecord $lastError
     }
 }

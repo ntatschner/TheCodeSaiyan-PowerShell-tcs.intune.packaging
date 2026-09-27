@@ -105,11 +105,11 @@ Describe 'New-ApplicationDeploymentGroup' {
         }
 
         It 'Reports a failed End to telemetry when a group failed' {
-            Mock -ModuleName tcs.intune.packaging Invoke-TelemetryCollection { }
+            Mock -ModuleName tcs.core Invoke-TelemetryCollection { }
             Mock -ModuleName tcs.intune.packaging New-EntraGroup { throw 'quota' }
             $null = New-ApplicationDeploymentGroup -ApplicationName 'App' -CreateGroups -Confirm:$false -ErrorAction SilentlyContinue
-            Should -Invoke -ModuleName tcs.intune.packaging Invoke-TelemetryCollection -Times 1 -Exactly -ParameterFilter { $Stage -eq 'End' -and $Failed -eq $true }
-            Should -Invoke -ModuleName tcs.intune.packaging Invoke-TelemetryCollection -Times 0 -Exactly -ParameterFilter { $Stage -eq 'End' -and -not $Failed }
+            Should -Invoke -ModuleName tcs.core Invoke-TelemetryCollection -Times 1 -Exactly -ParameterFilter { $Stage -eq 'End' -and $Failed -eq $true }
+            Should -Invoke -ModuleName tcs.core Invoke-TelemetryCollection -Times 0 -Exactly -ParameterFilter { $Stage -eq 'End' -and -not $Failed }
         }
 
         It 'Creates nothing with -WhatIf' {

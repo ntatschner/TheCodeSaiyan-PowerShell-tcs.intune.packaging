@@ -74,13 +74,7 @@ function New-PackageJSON {
         $MainInstaller
     )
 
-    $TelemetryArgs = @{
-        ModuleName    = $MyInvocation.MyCommand.Module.Name
-        ModuleVersion = [string]$MyInvocation.MyCommand.Module.Version
-        CommandName   = $MyInvocation.MyCommand.Name
-        ExecutionID   = [guid]::NewGuid().ToString()
-    }
-    Invoke-TelemetryCollection @TelemetryArgs -Stage Start -ClearTimer
+    $telemetry = Start-TcsTelemetry
     try {
         Write-Warning 'New-PackageJSON is deprecated and may be removed in a future version: no command in tcs.intune.packaging reads its output. Use New-IntuneApplication to write the JSON that Publish-IntuneAppPackage reads.'
         $JSONFileName = "package-$($PackageName)-v$($Version).json"
@@ -105,10 +99,12 @@ function New-PackageJSON {
             }
             Get-Item -LiteralPath $PackageJSONPath
         }
-        Invoke-TelemetryCollection @TelemetryArgs -Stage End
     }
     catch {
-        Invoke-TelemetryCollection @TelemetryArgs -Stage End -Failed $true -Exception $_
+        Complete-TcsTelemetry -Token $telemetry -ErrorRecord $_
         throw
+    }
+    finally {
+        Complete-TcsTelemetry -Token $telemetry
     }
 }

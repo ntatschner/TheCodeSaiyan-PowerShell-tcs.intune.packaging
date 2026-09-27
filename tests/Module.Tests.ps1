@@ -26,9 +26,9 @@ Describe 'tcs.intune.packaging module' {
         { Test-ModuleManifest -Path $ManifestPath -ErrorAction Stop } | Should -Not -Throw
     }
 
-    It 'Requires tcs.core 0.3.0 or later' {
+    It 'Requires tcs.core 0.4.0 or later' {
         $required = (Import-PowerShellDataFile -Path $ManifestPath).RequiredModules | Where-Object { $_.ModuleName -eq 'tcs.core' }
-        [version]$required.ModuleVersion | Should -BeGreaterOrEqual ([version]'0.3.0')
+        [version]$required.ModuleVersion | Should -BeGreaterOrEqual ([version]'0.4.0')
     }
 
     It 'Imports without errors' {
@@ -93,22 +93,38 @@ Describe 'Help for <Name>' -ForEach $PublicFunctions {
 }
 
 Describe 'Telemetry for <Name>' -ForEach $ExportedFunctions {
-    # Coverage guard: every exported command reports a Start and an End event through tcs.core.
-    # No command is excluded.
+    # Coverage guard: every exported command reports telemetry through tcs.core
+    # (Start-TcsTelemetry and Complete-TcsTelemetry). No command is excluded.
     BeforeAll {
-        $definition = (Get-Command -Name $Name -Module tcs.intune.packaging).Definition
+        $command = Get-Command -Name $Name -Module tcs.intune.packaging
+        $definition = $command.Definition
+        $body = $command.ScriptBlock.Ast.Body
     }
 
-    It 'Reports a Start event' {
-        $definition | Should -Match 'Invoke-TelemetryCollection\s[^\r\n]*-Stage\s+[''"]?Start\b'
+    It 'Starts a telemetry run' {
+        $definition | Should -Match '\$telemetry\s*=\s*Start-TcsTelemetry\b'
     }
 
-    It 'Reports an End event' {
-        $definition | Should -Match 'Invoke-TelemetryCollection\s[^\r\n]*-Stage\s+[''"]?End\b'
+    It 'Completes the run in the end block, or in a finally block when it has no process block' {
+        if ($body.ProcessBlock) {
+            "$($body.BeginBlock)" | Should -Match '\$telemetry\s*=\s*Start-TcsTelemetry\b'
+            "$($body.EndBlock)" | Should -Match 'Complete-TcsTelemetry\s+-Token\s+\$telemetry\b'
+        }
+        else {
+            $definition | Should -Match 'finally\s*\{\s*Complete-TcsTelemetry\s+-Token\s+\$telemetry\b'
+        }
     }
 
-    It 'Reports a failed End event' {
-        $definition | Should -Match 'Invoke-TelemetryCollection\s[^\r\n]*-Stage\s+[''"]?End[''"]?\s[^\r\n]*-Failed\s+\$true'
+    It 'Completes the run as failed on errors' {
+        $definition | Should -Match 'Complete-TcsTelemetry\s+-Token\s+\$telemetry\s+-ErrorRecord\s+\$'
+    }
+}
+
+Describe 'Telemetry wiring' {
+    It 'Does not call Invoke-TelemetryCollection or Invoke-TcsCommand in any file in Public/' {
+        $calls = @(Get-ChildItem -Path (Join-Path $ModuleRoot 'Public') -Filter '*.ps1' -File |
+                Select-String -Pattern 'Invoke-TelemetryCollection', 'Invoke-TcsCommand' -SimpleMatch)
+        $calls | Should -BeNullOrEmpty
     }
 }
 

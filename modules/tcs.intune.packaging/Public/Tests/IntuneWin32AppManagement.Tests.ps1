@@ -168,6 +168,31 @@ Describe 'Win32 app management commands' {
             @($script:Calls | Where-Object Method -EQ 'POST').Count | Should -Be 0
         }
     }
+    Context 'Telemetry' {
+        BeforeEach {
+            Mock -ModuleName tcs.core Invoke-TelemetryCollection { }
+        }
+
+        It 'Reports one run for all pipeline input' {
+            'app-1', 'app-2' | Remove-IntuneWin32App -Confirm:$false
+            @($script:Calls | Where-Object Method -EQ 'DELETE').Count | Should -Be 2
+            Should -Invoke -ModuleName tcs.core Invoke-TelemetryCollection -Times 1 -Exactly -ParameterFilter { $Stage -eq 'Start' -and $CommandName -eq 'Remove-IntuneWin32App' }
+            Should -Invoke -ModuleName tcs.core Invoke-TelemetryCollection -Times 1 -Exactly -ParameterFilter { $Stage -eq 'End' -and -not $Failed }
+        }
+
+        It 'Reports a failed run when the command stops with a terminating error' {
+            $script:App = [PSCustomObject]@{ '@odata.type' = '#microsoft.graph.winGetApp'; id = 'store' }
+            { Get-IntuneWin32App -Id 'store' } | Should -Throw '*not a Win32 app*'
+            Should -Invoke -ModuleName tcs.core Invoke-TelemetryCollection -Times 1 -Exactly -ParameterFilter { $Stage -eq 'End' -and $Failed -eq $true }
+            Should -Invoke -ModuleName tcs.core Invoke-TelemetryCollection -Times 0 -Exactly -ParameterFilter { $Stage -eq 'End' -and -not $Failed }
+        }
+
+        It 'Reports a failed run when not connected to Microsoft Graph' {
+            Mock -ModuleName tcs.intune.packaging Get-MgContext { }
+            { Set-IntuneWin32App -Id 'app-1' -Notes 'x' -Confirm:$false } | Should -Throw '*Connect-MgGraph*'
+            Should -Invoke -ModuleName tcs.core Invoke-TelemetryCollection -Times 1 -Exactly -ParameterFilter { $Stage -eq 'End' -and $Failed -eq $true }
+        }
+    }
 }
 
 Describe 'Get-IntuneWinPackageInfo' {
@@ -180,6 +205,17 @@ Describe 'Get-IntuneWinPackageInfo' {
         $info.EncryptedContentSize | Should -Be 3000
         $info.ToolVersion | Should -Be '1.8.6'
         $info.PSObject.Properties.Name | Should -Not -Contain 'EncryptionInfo'
+    }
+
+    It 'Reports exactly one completed run when a downstream command stops the pipeline' {
+        Mock -ModuleName tcs.core Invoke-TelemetryCollection { }
+        $first = New-TestIntuneWin -Path (Join-Path -Path $TestDrive -ChildPath 'first.intunewin')
+        $second = New-TestIntuneWin -Path (Join-Path -Path $TestDrive -ChildPath 'second.intunewin')
+        $info = @($first, $second | Get-IntuneWinPackageInfo | Select-Object -First 1)
+        $info.Count | Should -Be 1
+        Should -Invoke -ModuleName tcs.core Invoke-TelemetryCollection -Times 1 -Exactly -ParameterFilter { $Stage -eq 'Start' -and $CommandName -eq 'Get-IntuneWinPackageInfo' }
+        Should -Invoke -ModuleName tcs.core Invoke-TelemetryCollection -Times 1 -Exactly -ParameterFilter { $Stage -eq 'End' }
+        Should -Invoke -ModuleName tcs.core Invoke-TelemetryCollection -Times 1 -Exactly -ParameterFilter { $Stage -eq 'End' -and -not $Failed }
     }
 
     It 'Throws for a file that is not a .intunewin package' {

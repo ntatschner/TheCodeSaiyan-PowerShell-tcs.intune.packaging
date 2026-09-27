@@ -223,16 +223,18 @@ function New-IntuneWin32Application {
     )
 
     begin {
-        $null = Assert-MgGraphConnection
+        $telemetry = Start-TcsTelemetry
+        $lastError = $null
+        try {
+            $null = Assert-MgGraphConnection
+        }
+        catch {
+            Complete-TcsTelemetry -Token $telemetry -ErrorRecord $_
+            throw
+        }
     }
     process {
-        $TelemetryArgs = @{
-            ModuleName    = $MyInvocation.MyCommand.Module.Name
-            ModuleVersion = [string]$MyInvocation.MyCommand.Module.Version
-            CommandName   = $MyInvocation.MyCommand.Name
-            ExecutionID   = [guid]::NewGuid().ToString()
-        }
-        Invoke-TelemetryCollection @TelemetryArgs -Stage Start -ClearTimer
+        $completed = $false
         try {
             $Package = Read-IntuneWinPackage -Path $IntuneWinFilePath -ErrorAction Stop
 
@@ -331,7 +333,7 @@ function New-IntuneWin32Application {
             $Body['setupFilePath'] = $Package.SetupFile
 
             if (-not $PSCmdlet.ShouldProcess([string]$Body['displayName'], 'Create Intune Win32 app and upload its content')) {
-                Invoke-TelemetryCollection @TelemetryArgs -Stage End
+                $completed = $true
                 return
             }
 
@@ -345,11 +347,19 @@ function New-IntuneWin32Application {
             }
             $App | Add-Member -NotePropertyName committedContentVersion -NotePropertyValue $ContentVersion -Force
             $App
-            Invoke-TelemetryCollection @TelemetryArgs -Stage End
+            $completed = $true
         }
         catch {
-            Invoke-TelemetryCollection @TelemetryArgs -Stage End -Failed $true -Exception $_
+            $lastError = $_
             $PSCmdlet.ThrowTerminatingError($_)
         }
+        finally {
+            if (-not $completed) {
+                Complete-TcsTelemetry -Token $telemetry -ErrorRecord $lastError
+            }
+        }
+    }
+    end {
+        Complete-TcsTelemetry -Token $telemetry -ErrorRecord $lastError
     }
 }

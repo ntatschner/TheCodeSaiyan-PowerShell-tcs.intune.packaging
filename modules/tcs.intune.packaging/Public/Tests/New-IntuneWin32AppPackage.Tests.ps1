@@ -116,25 +116,32 @@ Describe 'New-IntuneWin32AppPackage' {
 
     Context 'Telemetry' {
         BeforeEach {
-            Mock -ModuleName tcs.intune.packaging Invoke-TelemetryCollection { }
+            Mock -ModuleName tcs.core Invoke-TelemetryCollection { }
         }
 
         It 'Reports a failed End when packaging fails' {
             { New-IntuneWin32AppPackage -SourceFolder $Source -SetupFile 'missing.exe' -OutputFolder $Output -IntuneWinAppUtilPath $Tool } | Should -Throw
-            Should -Invoke -ModuleName tcs.intune.packaging Invoke-TelemetryCollection -Times 1 -Exactly -ParameterFilter { $Stage -eq 'End' -and $Failed -eq $true }
-            Should -Invoke -ModuleName tcs.intune.packaging Invoke-TelemetryCollection -Times 0 -Exactly -ParameterFilter { $Stage -eq 'End' -and -not $Failed }
+            Should -Invoke -ModuleName tcs.core Invoke-TelemetryCollection -Times 1 -Exactly -ParameterFilter { $Stage -eq 'End' -and $Failed -eq $true }
+            Should -Invoke -ModuleName tcs.core Invoke-TelemetryCollection -Times 0 -Exactly -ParameterFilter { $Stage -eq 'End' -and -not $Failed }
         }
 
         It 'Reports a failed End when the package exists and -Force is not used' {
             Set-Content -Path (Join-Path -Path $Output -ChildPath 'setup.intunewin') -Value 'old'
             $null = New-IntuneWin32AppPackage -SourceFolder $Source -SetupFile 'setup.exe' -OutputFolder $Output -IntuneWinAppUtilPath $Tool -ErrorAction SilentlyContinue
-            Should -Invoke -ModuleName tcs.intune.packaging Invoke-TelemetryCollection -Times 1 -Exactly -ParameterFilter { $Stage -eq 'End' -and $Failed -eq $true }
-            Should -Invoke -ModuleName tcs.intune.packaging Invoke-TelemetryCollection -Times 0 -Exactly -ParameterFilter { $Stage -eq 'End' -and -not $Failed }
+            Should -Invoke -ModuleName tcs.core Invoke-TelemetryCollection -Times 1 -Exactly -ParameterFilter { $Stage -eq 'End' -and $Failed -eq $true }
+            Should -Invoke -ModuleName tcs.core Invoke-TelemetryCollection -Times 0 -Exactly -ParameterFilter { $Stage -eq 'End' -and -not $Failed }
+        }
+
+        It 'Reports a failed End when the package exists and -ErrorAction Stop is used' {
+            Set-Content -Path (Join-Path -Path $Output -ChildPath 'setup.intunewin') -Value 'old'
+            { New-IntuneWin32AppPackage -SourceFolder $Source -SetupFile 'setup.exe' -OutputFolder $Output -IntuneWinAppUtilPath $Tool -ErrorAction Stop } | Should -Throw '*already exists*'
+            Should -Invoke -ModuleName tcs.core Invoke-TelemetryCollection -Times 1 -Exactly -ParameterFilter { $Stage -eq 'End' -and $Failed -eq $true }
+            Should -Invoke -ModuleName tcs.core Invoke-TelemetryCollection -Times 0 -Exactly -ParameterFilter { $Stage -eq 'End' -and -not $Failed }
         }
 
         It 'Reports a successful End' {
             $null = New-IntuneWin32AppPackage -SourceFolder $Source -SetupFile 'setup.exe' -OutputFolder $Output -IntuneWinAppUtilPath $Tool
-            Should -Invoke -ModuleName tcs.intune.packaging Invoke-TelemetryCollection -Times 1 -Exactly -ParameterFilter { $Stage -eq 'End' -and -not $Failed }
+            Should -Invoke -ModuleName tcs.core Invoke-TelemetryCollection -Times 1 -Exactly -ParameterFilter { $Stage -eq 'End' -and -not $Failed }
         }
     }
 }

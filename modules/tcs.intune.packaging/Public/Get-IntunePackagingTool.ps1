@@ -78,13 +78,7 @@ function Get-IntunePackagingTool {
 
         [switch]$Force
     )
-    $TelemetryArgs = @{
-        ModuleName    = $MyInvocation.MyCommand.Module.Name
-        ModuleVersion = [string]$MyInvocation.MyCommand.Module.Version
-        CommandName   = $MyInvocation.MyCommand.Name
-        ExecutionID   = [guid]::NewGuid().ToString()
-    }
-    Invoke-TelemetryCollection @TelemetryArgs -Stage Start -ClearTimer
+    $telemetry = Start-TcsTelemetry
     try {
         $RepositoryUrl = 'https://github.com/microsoft/Microsoft-Win32-Content-Prep-Tool'
         switch ($PSCmdlet.ParameterSetName) {
@@ -148,10 +142,12 @@ function Get-IntunePackagingTool {
                 Remove-Item -LiteralPath $WorkFolder -Recurse -Force -ErrorAction SilentlyContinue
             }
         }
-        Invoke-TelemetryCollection @TelemetryArgs -Stage End
     }
     catch {
-        Invoke-TelemetryCollection @TelemetryArgs -Stage End -Failed $true -Exception $_
+        Complete-TcsTelemetry -Token $telemetry -ErrorRecord $_
         throw
+    }
+    finally {
+        Complete-TcsTelemetry -Token $telemetry
     }
 }

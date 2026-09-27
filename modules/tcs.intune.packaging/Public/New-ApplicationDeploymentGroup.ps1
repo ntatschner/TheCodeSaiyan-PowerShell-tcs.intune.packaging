@@ -106,16 +106,9 @@ function New-ApplicationDeploymentGroup {
         [string[]]$Phase1Members
     )
     begin {
-        $TelemetryArgs = @{
-            ModuleName    = $MyInvocation.MyCommand.Module.Name
-            ModuleVersion = [string]$MyInvocation.MyCommand.Module.Version
-            CommandName   = $MyInvocation.MyCommand.Name
-            ExecutionID   = [guid]::NewGuid().ToString()
-        }
-        Invoke-TelemetryCollection @TelemetryArgs -Stage Start -ClearTimer
-        $TelemetryFailed = $false
-        # The last per-group error; reported to telemetry as a failure at the end
-        $GroupError = $null
+        $telemetry = Start-TcsTelemetry
+        # The last error, including per-group errors; reported to telemetry as a failure at the end
+        $lastError = $null
         try {
             # Capitalise each word in the application name and remove the spaces
             $textInfo = [System.Globalization.CultureInfo]::CurrentCulture.TextInfo
@@ -128,12 +121,12 @@ function New-ApplicationDeploymentGroup {
             }
         }
         catch {
-            $TelemetryFailed = $true
-            Invoke-TelemetryCollection @TelemetryArgs -Stage End -Failed $true -Exception $_
+            Complete-TcsTelemetry -Token $telemetry -ErrorRecord $_
             throw
         }
     }
     process {
+        $completed = $false
         try {
             # Generate the security group names
             $GroupList = [System.Collections.Generic.List[object]]::new()
@@ -166,7 +159,7 @@ function New-ApplicationDeploymentGroup {
                         $ExistingGroup = @(Get-EntraGroup -Filter "displayName eq '$($GroupName.Replace("'", "''"))'" -ErrorAction Stop | Where-Object { $_ })
                     }
                     catch {
-                        $GroupError = $_
+                        $lastError = $_
                         Write-Error -Message "Could not check whether the group '$GroupName' exists, so it was not created: $($_.Exception.Message)" -Exception $_.Exception -TargetObject $GroupName
                         continue
                     }
@@ -189,7 +182,7 @@ function New-ApplicationDeploymentGroup {
                         $newGroup = New-EntraGroup -DisplayName $GroupName -MailEnabled $false -SecurityEnabled $true -MailNickname $GroupName -Description $Group.GroupDescription -ErrorAction Stop
                     }
                     catch {
-                        $GroupError = $_
+                        $lastError = $_
                         Write-Error -Message "Failed to create group ${GroupName}: $($_.Exception.Message)" -Exception $_.Exception -TargetObject $GroupName
                         continue
                     }
@@ -200,7 +193,7 @@ function New-ApplicationDeploymentGroup {
                             Write-Verbose "Assigned group $($newGroup.Id) to administrative unit $AdminUnitId."
                         }
                         catch {
-                            $GroupError = $_
+                            $lastError = $_
                             Write-Error -Message "Failed to assign group $GroupName ($($newGroup.Id)) to administrative unit ${AdminUnitId}: $($_.Exception.Message)" -Exception $_.Exception -TargetObject $GroupName
                         }
                     }
@@ -212,7 +205,7 @@ function New-ApplicationDeploymentGroup {
                             Write-Verbose "Added member $member to group $GroupName."
                         }
                         catch {
-                            $GroupError = $_
+                            $lastError = $_
                             Write-Error -Message "Failed to add member $member to group ${GroupName}: $($_.Exception.Message)" -Exception $_.Exception -TargetObject $GroupName
                         }
                     }
@@ -234,23 +227,19 @@ function New-ApplicationDeploymentGroup {
             if (-not $CreateGroups) {
                 $GroupList
             }
+            $completed = $true
         }
         catch {
-            if (-not $TelemetryFailed) {
-                $TelemetryFailed = $true
-                Invoke-TelemetryCollection @TelemetryArgs -Stage End -Failed $true -Exception $_
-            }
+            $lastError = $_
             throw
+        }
+        finally {
+            if (-not $completed) {
+                Complete-TcsTelemetry -Token $telemetry -ErrorRecord $lastError
+            }
         }
     }
     end {
-        if (-not $TelemetryFailed) {
-            if ($GroupError) {
-                Invoke-TelemetryCollection @TelemetryArgs -Stage End -Failed $true -Exception $GroupError
-            }
-            else {
-                Invoke-TelemetryCollection @TelemetryArgs -Stage End
-            }
-        }
+        Complete-TcsTelemetry -Token $telemetry -ErrorRecord $lastError
     }
 }
