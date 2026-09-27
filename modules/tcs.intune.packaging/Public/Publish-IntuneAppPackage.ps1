@@ -138,14 +138,12 @@ function Publish-IntuneAppPackage {
 
         [switch]$NoAssignment
     )
+    begin {
+        $telemetry = Start-TcsTelemetry
+        $lastError = $null
+    }
     process {
-        $TelemetryArgs = @{
-            ModuleName    = $MyInvocation.MyCommand.Module.Name
-            ModuleVersion = [string]$MyInvocation.MyCommand.Module.Version
-            CommandName   = $MyInvocation.MyCommand.Name
-            ExecutionID   = [guid]::NewGuid().ToString()
-        }
-        Invoke-TelemetryCollection @TelemetryArgs -Stage Start -ClearTimer
+        $completed = $false
         try {
             $GraphContext = Assert-MgGraphConnection
             $AppJson = Read-IntuneAppJson -Path $IntuneAppJSONPath -IgnoreRules:$PSBoundParameters.ContainsKey('Rules')
@@ -189,7 +187,7 @@ function Publish-IntuneAppPackage {
                     throw "The application '$DisplayName' already exists in Intune ($($Existing.id)). Use -Force to upload the package as a new content version."
                 }
                 if (-not $PSCmdlet.ShouldProcess("$DisplayName ($($Existing.id))", "Upload '$IntuneWinPath' as a new content version and update the app properties")) {
-                    Invoke-TelemetryCollection @TelemetryArgs -Stage End
+                    $completed = $true
                     return
                 }
                 $ContentVersion = Publish-IntuneWin32AppContent -AppId $Existing.id -IntuneWinPath $IntuneWinPath -PollIntervalSeconds $PollIntervalSeconds -TimeoutSeconds $TimeoutSeconds -ErrorAction Stop
@@ -247,11 +245,19 @@ function Publish-IntuneAppPackage {
                 }
             }
             $App
-            Invoke-TelemetryCollection @TelemetryArgs -Stage End
+            $completed = $true
         }
         catch {
-            Invoke-TelemetryCollection @TelemetryArgs -Stage End -Failed $true -Exception $_
+            $lastError = $_
             $PSCmdlet.ThrowTerminatingError($_)
         }
+        finally {
+            if (-not $completed) {
+                Complete-TcsTelemetry -Token $telemetry -ErrorRecord $lastError
+            }
+        }
+    }
+    end {
+        Complete-TcsTelemetry -Token $telemetry -ErrorRecord $lastError
     }
 }

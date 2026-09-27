@@ -150,6 +150,8 @@ function New-APFConfigDeployment {
     }
 
     begin {
+        $telemetry = Start-TcsTelemetry
+        $lastError = $null
         $TemplateRoot = Join-Path -Path $PSScriptRoot -ChildPath 'Templates'
         $PackagedBy = [Environment]::UserName
 
@@ -171,14 +173,7 @@ function New-APFConfigDeployment {
     }
 
     process {
-        $TelemetryArgs = @{
-            ModuleName    = $MyInvocation.MyCommand.Module.Name
-            ModuleVersion = [string]$MyInvocation.MyCommand.Module.Version
-            CommandName   = $MyInvocation.MyCommand.Name
-            ExecutionID   = [guid]::NewGuid().ToString()
-        }
-        Invoke-TelemetryCollection @TelemetryArgs -Stage Start -ClearTimer
-
+        $completed = $false
         try {
             # The dynamic parameters can be bound from the pipeline (ValueFromPipelineByPropertyName),
             # so they are read here, per input object, and not in begin
@@ -212,13 +207,13 @@ function New-APFConfigDeployment {
             # Validates Name and makes sure the package folder is a subfolder of the destination
             $PackageFolder = Get-PackageFolderPath -DestinationFolder $DestinationFolder -Name $Name
             if (-not $PSCmdlet.ShouldProcess($PackageFolder, "Create $ConfigurationType deployment package")) {
-                Invoke-TelemetryCollection @TelemetryArgs -Stage End
+                $completed = $true
                 return
             }
             if (Test-Path -LiteralPath $PackageFolder) {
                 if (-not (Confirm-FolderOverwrite -Path $PackageFolder)) {
                     Write-Warning "The folder '$PackageFolder' already exists and was not changed."
-                    Invoke-TelemetryCollection @TelemetryArgs -Stage End
+                    $completed = $true
                     return
                 }
                 Write-Verbose "Removing existing directory $PackageFolder and recreating it."
@@ -429,11 +424,21 @@ function New-APFConfigDeployment {
             }
             $CommandLine = Get-APFCommandLine
             Write-Output "When publishing the deployment to Intune, use`n'$($CommandLine.InstallCommand)' for the install command and`n'$($CommandLine.UninstallCommand)' for the uninstall command."
-            Invoke-TelemetryCollection @TelemetryArgs -Stage End
+            $completed = $true
         }
         catch {
-            Invoke-TelemetryCollection @TelemetryArgs -Stage End -Failed $true -Exception $_
+            $lastError = $_
             Write-Error -Message "Failed to create the $ConfigurationType deployment package: $($_.Exception.Message)" -Exception $_.Exception
+            # The error was written (it is reported in end); the next item is processed as usual
+            $completed = $true
         }
+        finally {
+            if (-not $completed) {
+                Complete-TcsTelemetry -Token $telemetry -ErrorRecord $lastError
+            }
+        }
+    }
+    end {
+        Complete-TcsTelemetry -Token $telemetry -ErrorRecord $lastError
     }
 }

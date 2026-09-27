@@ -91,14 +91,8 @@ function Set-ScriptSignature {
         $TimestampServer = 'http://timestamp.digicert.com'
     )
     begin {
-        $TelemetryArgs = @{
-            ModuleName    = $MyInvocation.MyCommand.Module.Name
-            ModuleVersion = [string]$MyInvocation.MyCommand.Module.Version
-            CommandName   = $MyInvocation.MyCommand.Name
-            ExecutionID   = [guid]::NewGuid().ToString()
-        }
-        Invoke-TelemetryCollection @TelemetryArgs -Stage Start -ClearTimer
-        $TelemetryFailed = $false
+        $telemetry = Start-TcsTelemetry
+        $lastError = $null
         try {
             if (-not (Get-Command -Name 'Set-AuthenticodeSignature' -ErrorAction SilentlyContinue)) {
                 throw 'Set-AuthenticodeSignature is not available. Set-ScriptSignature needs Windows.'
@@ -116,12 +110,12 @@ function Set-ScriptSignature {
             }
         }
         catch {
-            $TelemetryFailed = $true
-            Invoke-TelemetryCollection @TelemetryArgs -Stage End -Failed $true -Exception $_
+            Complete-TcsTelemetry -Token $telemetry -ErrorRecord $_
             throw
         }
     }
     process {
+        $completed = $false
         try {
             foreach ($Script in $Path) {
                 if (-not $PSCmdlet.ShouldProcess($Script, 'Sign script')) {
@@ -134,18 +128,19 @@ function Set-ScriptSignature {
                     Write-Error -Message "Failed to sign script '$Script': $($_.Exception.Message)"
                 }
             }
+            $completed = $true
         }
         catch {
-            if (-not $TelemetryFailed) {
-                $TelemetryFailed = $true
-                Invoke-TelemetryCollection @TelemetryArgs -Stage End -Failed $true -Exception $_
-            }
+            $lastError = $_
             throw
+        }
+        finally {
+            if (-not $completed) {
+                Complete-TcsTelemetry -Token $telemetry -ErrorRecord $lastError
+            }
         }
     }
     end {
-        if (-not $TelemetryFailed) {
-            Invoke-TelemetryCollection @TelemetryArgs -Stage End
-        }
+        Complete-TcsTelemetry -Token $telemetry -ErrorRecord $lastError
     }
 }

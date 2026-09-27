@@ -157,24 +157,18 @@ function Set-IntuneWin32App {
         [switch]$PassThru
     )
     begin {
-        $TelemetryArgs = @{
-            ModuleName    = $MyInvocation.MyCommand.Module.Name
-            ModuleVersion = [string]$MyInvocation.MyCommand.Module.Version
-            CommandName   = $MyInvocation.MyCommand.Name
-            ExecutionID   = [guid]::NewGuid().ToString()
-        }
-        Invoke-TelemetryCollection @TelemetryArgs -Stage Start -ClearTimer
-        $TelemetryFailed = $false
+        $telemetry = Start-TcsTelemetry
+        $lastError = $null
         try {
             $null = Assert-MgGraphConnection
         }
         catch {
-            $TelemetryFailed = $true
-            Invoke-TelemetryCollection @TelemetryArgs -Stage End -Failed $true -Exception $_
+            Complete-TcsTelemetry -Token $telemetry -ErrorRecord $_
             $PSCmdlet.ThrowTerminatingError($_)
         }
     }
     process {
+        $completed = $false
         try {
             $AppUri = "v1.0/deviceAppManagement/mobileApps/$([System.Uri]::EscapeDataString($Id))"
             if ($PSCmdlet.ParameterSetName -eq 'Json') {
@@ -235,18 +229,19 @@ function Set-IntuneWin32App {
                     Invoke-MgGraphRequest -Method GET -Uri $AppUri -OutputType PSObject -ErrorAction Stop
                 }
             }
+            $completed = $true
         }
         catch {
-            if (-not $TelemetryFailed) {
-                $TelemetryFailed = $true
-                Invoke-TelemetryCollection @TelemetryArgs -Stage End -Failed $true -Exception $_
-            }
+            $lastError = $_
             $PSCmdlet.ThrowTerminatingError($_)
+        }
+        finally {
+            if (-not $completed) {
+                Complete-TcsTelemetry -Token $telemetry -ErrorRecord $lastError
+            }
         }
     }
     end {
-        if (-not $TelemetryFailed) {
-            Invoke-TelemetryCollection @TelemetryArgs -Stage End
-        }
+        Complete-TcsTelemetry -Token $telemetry -ErrorRecord $lastError
     }
 }

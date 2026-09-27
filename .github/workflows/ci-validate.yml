@@ -91,7 +91,7 @@ jobs:
           Set-PSRepository -Name PSGallery -InstallationPolicy Trusted
           Install-Module Pester -RequiredVersion $env:PESTER_VERSION -Force -SkipPublisherCheck -Scope CurrentUser
           Install-Module PSScriptAnalyzer -RequiredVersion $env:PSSA_VERSION -Force -Scope CurrentUser
-          ./.github/scripts/install-tcs-core.ps1 -MinimumVersion 0.3.0
+          ./.github/scripts/install-tcs-core.ps1 -MinimumVersion 0.4.0
 
       - name: Run Pester
         run: |

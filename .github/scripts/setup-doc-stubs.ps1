@@ -1,6 +1,6 @@
 # Defines stand-ins for the tcs.core functions that tcs.intune.packaging calls while it is imported,
 # so the documentation job can load the module when tcs.core is not installed. The signatures match
-# tcs.core 0.3.0. The real functions are used when tcs.core is available.
+# tcs.core 0.4.0. The real functions are used when tcs.core is available.
 param()
 
 if (-not (Get-Command -Name Get-ModuleConfig -ErrorAction SilentlyContinue)) {

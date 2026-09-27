@@ -205,3 +205,56 @@ Describe 'Publish-IntuneAppPackage' {
         }
     }
 }
+
+Describe 'Publish-IntuneAppPackage telemetry' {
+    BeforeAll {
+        . (Join-Path -Path $PSScriptRoot -ChildPath '../../../../tests/TestHelpers/New-TestIntuneWin.ps1')
+        $script:Stubs = Add-GraphCommandStub
+        $script:Package = (New-TestIntuneWin -Path (Join-Path -Path $TestDrive -ChildPath 'telemetry.intunewin')).FullName
+        $script:Json = Join-Path -Path $TestDrive -ChildPath 'telemetry.json'
+        @{
+            ApplicationParameters = @{
+                ApplicationName     = 'Telemetry App'
+                Description         = 'Desc'
+                Publisher           = 'Contoso'
+                InstallCommand      = 'setup.exe /S'
+                UninstallCommand    = 'setup.exe /U'
+                DetectionRuleConfig = @{ '@odata.type' = '#microsoft.graph.win32LobAppFileSystemRule'; ruleType = 'detection'; path = 'C:\App'; fileOrFolderName = 'app.exe'; operationType = 'exists'; operator = 'notConfigured'; check32BitOn64System = $false }
+            }
+        } | ConvertTo-Json -Depth 5 | Set-Content -Path $script:Json
+    }
+
+    AfterAll {
+        foreach ($name in $script:Stubs) {
+            Remove-Item -Path "Function:\global:$name" -ErrorAction SilentlyContinue
+        }
+    }
+
+    BeforeEach {
+        Mock -ModuleName tcs.core Invoke-TelemetryCollection { }
+        Mock -ModuleName tcs.intune.packaging Get-MgContext { [PSCustomObject]@{ Account = 'a'; TenantId = 't' } }
+        Mock -ModuleName tcs.intune.packaging Invoke-MgGraphRequest {
+            if ($Method -eq 'POST') {
+                return [PSCustomObject]@{ id = 'new-id'; displayName = 'Telemetry App' }
+            }
+            [PSCustomObject]@{ value = @() }
+        }
+        Mock -ModuleName tcs.intune.packaging Publish-IntuneWin32AppContent { '1' }
+    }
+
+    It 'Reports only Publish-IntuneAppPackage, not the New-IntuneWin32Application run it calls' {
+        $app = Publish-IntuneAppPackage -IntuneAppJSONPath $script:Json -IntuneWinPath $script:Package -NoTenantDetails -NoAssignment -Confirm:$false
+        $app.id | Should -Be 'new-id'
+        Should -Invoke -ModuleName tcs.intune.packaging Invoke-MgGraphRequest -Times 1 -Exactly -ParameterFilter { $Method -eq 'POST' }
+        Should -Invoke -ModuleName tcs.core Invoke-TelemetryCollection -Times 1 -Exactly -ParameterFilter { $Stage -eq 'Start' }
+        Should -Invoke -ModuleName tcs.core Invoke-TelemetryCollection -Times 1 -Exactly -ParameterFilter { $Stage -eq 'Start' -and $CommandName -eq 'Publish-IntuneAppPackage' }
+        Should -Invoke -ModuleName tcs.core Invoke-TelemetryCollection -Times 1 -Exactly -ParameterFilter { $Stage -eq 'End' -and -not $Failed -and $CommandName -eq 'Publish-IntuneAppPackage' }
+    }
+
+    It 'Reports a failed run when the app already exists and -Force is not used' {
+        Mock -ModuleName tcs.intune.packaging Invoke-MgGraphRequest { [PSCustomObject]@{ value = @([PSCustomObject]@{ '@odata.type' = '#microsoft.graph.win32LobApp'; id = 'old-id' }) } }
+        { Publish-IntuneAppPackage -IntuneAppJSONPath $script:Json -IntuneWinPath $script:Package -NoTenantDetails -NoAssignment } | Should -Throw '*already exists*'
+        Should -Invoke -ModuleName tcs.core Invoke-TelemetryCollection -Times 1 -Exactly -ParameterFilter { $Stage -eq 'End' -and $Failed -eq $true }
+        Should -Invoke -ModuleName tcs.core Invoke-TelemetryCollection -Times 0 -Exactly -ParameterFilter { $Stage -eq 'End' -and -not $Failed }
+    }
+}

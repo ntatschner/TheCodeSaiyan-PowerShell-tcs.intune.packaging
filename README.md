@@ -10,7 +10,7 @@ Part of the tcs module suite; built on [tcs.core](https://github.com/ntatschner/
 
 - **Windows.** The module uses the Windows Installer COM object, Authenticode signing and
   Microsoft's `IntuneWinAppUtil.exe`. It runs on Windows PowerShell 5.1 and PowerShell 7 on Windows.
-- **tcs.core 0.3.0 or later** (installed automatically as a required module).
+- **tcs.core 0.4.0 or later** (installed automatically as a required module).
 - Optional, only for the commands that talk to Microsoft Entra ID / Intune:
   - `Microsoft.Entra` (`New-ApplicationDeploymentGroup -CreateGroups`)
   - `Microsoft.Graph.Identity.DirectoryManagement` (`-AdminUnitId`)
@@ -98,6 +98,11 @@ tcs modules send anonymous usage telemetry to help find failing commands. Teleme
 default and a notice is shown the first time a module is loaded. Nothing is sent until a
 telemetry endpoint is configured.
 
+One event is sent per command run: a pipeline (for example `'a', 'b' | Remove-IntuneWin32App`) is
+one run, and when a command calls another command of this module (for example
+`Publish-IntuneAppPackage` creating the app with `New-IntuneWin32Application`), only the outer command
+is reported.
+
 Each event contains: time (UTC), module and command name, module version, duration, success,
 the exception **type** on failure, PowerShell version and edition, OS family, PowerShell host
 name, and a random installation ID created on first use.
@@ -115,6 +120,11 @@ tcs modules with the environment variable `TCS_TELEMETRY_OPTOUT=1`.
 `.intunewin` file to the Azure Storage URI in blocks, commit it with the encryption information from
 `Detection.xml` and set the app's `committedContentVersion`. Detection and requirement rules come from
 `New-IntuneWin32Rule`.
+
+Each block upload to Azure Storage, and the final block list, is retried on a transient error: up to
+3 attempts, 2 and then 4 seconds apart (longer when the server sends `Retry-After`), for HTTP 429,
+500 and 503 and for errors without a response such as timeouts. Other errors, such as 403, stop the
+upload at once. Microsoft Graph requests are retried by the Microsoft Graph SDK itself.
 
 `Publish-IntuneAppPackage` then assigns the app (from the JSON file or its `-Assignment*` parameters)
 with the `assign` action, and `Add-IntuneWin32AppSupersedence` / `Add-IntuneWin32AppDependency` use

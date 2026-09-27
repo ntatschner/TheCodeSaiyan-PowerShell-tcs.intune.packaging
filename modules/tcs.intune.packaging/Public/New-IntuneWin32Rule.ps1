@@ -159,16 +159,11 @@ function New-IntuneWin32Rule {
         return $paramDictionary
     }
     begin {
-        $TelemetryArgs = @{
-            ModuleName    = $MyInvocation.MyCommand.Module.Name
-            ModuleVersion = [string]$MyInvocation.MyCommand.Module.Version
-            CommandName   = $MyInvocation.MyCommand.Name
-            ExecutionID   = [guid]::NewGuid().ToString()
-        }
-        Invoke-TelemetryCollection @TelemetryArgs -Stage Start -ClearTimer
-        $TelemetryFailed = $false
+        $telemetry = Start-TcsTelemetry
+        $lastError = $null
     }
     process {
+        $completed = $false
         try {
             # Builds the rule types documented at
             # https://learn.microsoft.com/graph/api/resources/intune-apps-win32lobapprule
@@ -280,18 +275,19 @@ function New-IntuneWin32Rule {
                 $Result[$Key] = $Rule[$Key]
             }
             $Result
+            $completed = $true
         }
         catch {
-            if (-not $TelemetryFailed) {
-                $TelemetryFailed = $true
-                Invoke-TelemetryCollection @TelemetryArgs -Stage End -Failed $true -Exception $_
-            }
+            $lastError = $_
             throw
+        }
+        finally {
+            if (-not $completed) {
+                Complete-TcsTelemetry -Token $telemetry -ErrorRecord $lastError
+            }
         }
     }
     end {
-        if (-not $TelemetryFailed) {
-            Invoke-TelemetryCollection @TelemetryArgs -Stage End
-        }
+        Complete-TcsTelemetry -Token $telemetry -ErrorRecord $lastError
     }
 }

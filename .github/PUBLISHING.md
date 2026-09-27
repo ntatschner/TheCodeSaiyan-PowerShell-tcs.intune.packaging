@@ -66,7 +66,7 @@ so bump `ModuleVersion` rather than relying on this option.
 - **Publish skipped: version already exists**: bump `ModuleVersion` and release again.
 - **No tag was created**: the manifest version is not greater than the latest `v*` tag, or CI Validate
   failed on `main`.
-- **Import fails during validation**: the module requires `tcs.core` 0.3.0 or later
+- **Import fails during validation**: the module requires `tcs.core` 0.4.0 or later
   (`RequiredModules`); make sure that version is on the PowerShell Gallery.
 - **Logs**: open the run in the **Actions** tab and expand the failing step.
 

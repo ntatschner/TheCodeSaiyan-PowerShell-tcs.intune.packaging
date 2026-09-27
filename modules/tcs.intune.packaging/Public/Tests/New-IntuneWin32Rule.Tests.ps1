@@ -108,19 +108,19 @@ Describe 'New-IntuneWin32Rule' {
 
 Describe 'New-IntuneWin32Rule telemetry' {
     BeforeEach {
-        Mock -ModuleName tcs.intune.packaging Invoke-TelemetryCollection { }
+        Mock -ModuleName tcs.core Invoke-TelemetryCollection { }
     }
 
     It 'Reports Start and a successful End' {
         $null = New-IntuneWin32Rule -RuleParentType detection -RuleType Registry -Path 'HKEY_LOCAL_MACHINE\Software\MyApp' -Operator exists
-        Should -Invoke -ModuleName tcs.intune.packaging Invoke-TelemetryCollection -Times 1 -Exactly -ParameterFilter { $Stage -eq 'Start' -and $CommandName -eq 'New-IntuneWin32Rule' }
-        Should -Invoke -ModuleName tcs.intune.packaging Invoke-TelemetryCollection -Times 1 -Exactly -ParameterFilter { $Stage -eq 'End' -and -not $Failed }
+        Should -Invoke -ModuleName tcs.core Invoke-TelemetryCollection -Times 1 -Exactly -ParameterFilter { $Stage -eq 'Start' -and $CommandName -eq 'New-IntuneWin32Rule' }
+        Should -Invoke -ModuleName tcs.core Invoke-TelemetryCollection -Times 1 -Exactly -ParameterFilter { $Stage -eq 'End' -and -not $Failed }
     }
 
     It 'Reports a failed End once and still throws' {
         { New-IntuneWin32Rule -RuleParentType detection -RuleType Registry -Path 'HKEY_LOCAL_MACHINE\Software\MyApp' -ValueName 'Version' -Operator equal -Value '1.0' } | Should -Throw '*DataType*'
-        Should -Invoke -ModuleName tcs.intune.packaging Invoke-TelemetryCollection -Times 1 -Exactly -ParameterFilter { $Stage -eq 'Start' }
-        Should -Invoke -ModuleName tcs.intune.packaging Invoke-TelemetryCollection -Times 1 -Exactly -ParameterFilter { $Stage -eq 'End' -and $Failed -eq $true }
-        Should -Invoke -ModuleName tcs.intune.packaging Invoke-TelemetryCollection -Times 0 -Exactly -ParameterFilter { $Stage -eq 'End' -and -not $Failed }
+        Should -Invoke -ModuleName tcs.core Invoke-TelemetryCollection -Times 1 -Exactly -ParameterFilter { $Stage -eq 'Start' }
+        Should -Invoke -ModuleName tcs.core Invoke-TelemetryCollection -Times 1 -Exactly -ParameterFilter { $Stage -eq 'End' -and $Failed -eq $true }
+        Should -Invoke -ModuleName tcs.core Invoke-TelemetryCollection -Times 0 -Exactly -ParameterFilter { $Stage -eq 'End' -and -not $Failed }
     }
 }

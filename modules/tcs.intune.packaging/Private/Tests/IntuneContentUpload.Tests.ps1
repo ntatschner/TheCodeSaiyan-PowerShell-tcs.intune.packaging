@@ -92,6 +92,144 @@ Describe 'Intune content upload helpers' {
         }
     }
 
+    Context 'Send-IntuneContentFile retries' {
+        BeforeAll {
+            if (-not ('IntunePackagingTests.FakeWebResponse' -as [type])) {
+                # Stands in for System.Net.HttpWebResponse, which cannot be constructed
+                Add-Type -IgnoreWarnings -TypeDefinition @'
+namespace IntunePackagingTests
+{
+    public class FakeWebResponse : System.Net.WebResponse
+    {
+        private readonly System.Net.WebHeaderCollection headers = new System.Net.WebHeaderCollection();
+
+        public FakeWebResponse(int statusCode)
+        {
+            StatusCode = (System.Net.HttpStatusCode)statusCode;
+        }
+
+        public System.Net.HttpStatusCode StatusCode { get; private set; }
+        public string StatusDescription { get { return "Error"; } }
+        public override System.Net.WebHeaderCollection Headers { get { return headers; } }
+        public override System.IO.Stream GetResponseStream() { return new System.IO.MemoryStream(); }
+    }
+}
+'@
+            }
+
+            # The shape of a failed Azure Storage request: a WebException with the HTTP response,
+            # or without a response for a timeout
+            function New-StorageException {
+                param([int]$StatusCode, [string]$RetryAfter)
+                if (-not $StatusCode) {
+                    return (New-Object System.Net.WebException -ArgumentList 'The operation has timed out.', $null, ([System.Net.WebExceptionStatus]::Timeout), $null)
+                }
+                $response = New-Object IntunePackagingTests.FakeWebResponse -ArgumentList $StatusCode
+                if ($RetryAfter) {
+                    $response.Headers.Add('Retry-After', $RetryAfter)
+                }
+                New-Object System.Net.WebException -ArgumentList "The remote server returned an error: ($StatusCode).", $null, ([System.Net.WebExceptionStatus]::ProtocolError), $response
+            }
+
+            $script:UploadFile = Join-Path -Path $TestDrive -ChildPath 'retry.bin'
+            $bytes = New-Object -TypeName byte[] -ArgumentList 1000
+            for ($i = 0; $i -lt $bytes.Length; $i++) {
+                $bytes[$i] = [byte]($i % 251)
+            }
+            [System.IO.File]::WriteAllBytes($script:UploadFile, $bytes)
+            $script:SasUri = 'https://blob.example/c/f?sv=1&sig=abc'
+        }
+
+        BeforeEach {
+            # Invoke-WithRetry runs in tcs.core, so its Start-Sleep is mocked there: no real waits
+            Mock -ModuleName tcs.core Start-Sleep { }
+            $script:Puts = [System.Collections.Generic.List[object]]::new()
+            # Status codes (or 'timeout') to fail the next requests with, in order
+            $script:Failures = [System.Collections.Generic.Queue[object]]::new()
+            $script:FailComp = 'block'
+            Mock -ModuleName tcs.intune.packaging Invoke-WebRequest {
+                $script:Puts.Add([PSCustomObject]@{
+                        Uri  = $Uri
+                        Body = $(if ($Body -is [byte[]]) { [System.Convert]::ToBase64String($Body) } else { $Body })
+                    })
+                if ($Uri -like "*&comp=$($script:FailComp)*" -and $script:Failures.Count -gt 0) {
+                    $failure = $script:Failures.Dequeue()
+                    if ($failure -eq 'timeout') {
+                        throw (New-StorageException)
+                    }
+                    if ($failure -is [hashtable]) {
+                        throw (New-StorageException @failure)
+                    }
+                    throw (New-StorageException -StatusCode $failure)
+                }
+            }
+        }
+
+        It 'Sends the same block again after HTTP 503 and then succeeds' {
+            $script:Failures.Enqueue(503)
+            InModuleScope tcs.intune.packaging -Parameters @{ Path = $script:UploadFile; SasUri = $script:SasUri } {
+                Send-IntuneContentFile -Path $Path -SasUri $SasUri -FileUri 'v1.0/files/1'
+            }
+            $blocks = @($script:Puts | Where-Object { $_.Uri -like '*&comp=block&*' })
+            $blocks.Count | Should -Be 2
+            $blocks[1].Uri | Should -Be $blocks[0].Uri
+            $blocks[1].Body | Should -Be $blocks[0].Body
+            $blocks[1].Body | Should -Be ([System.Convert]::ToBase64String([System.IO.File]::ReadAllBytes($script:UploadFile)))
+            @($script:Puts | Where-Object { $_.Uri -like '*&comp=blocklist' }).Count | Should -Be 1
+            Should -Invoke -ModuleName tcs.core Start-Sleep -Times 1 -Exactly -ParameterFilter { $Milliseconds -eq 2000 }
+        }
+
+        It 'Retries the block list after HTTP 500' {
+            $script:FailComp = 'blocklist'
+            $script:Failures.Enqueue(500)
+            InModuleScope tcs.intune.packaging -Parameters @{ Path = $script:UploadFile; SasUri = $script:SasUri } {
+                Send-IntuneContentFile -Path $Path -SasUri $SasUri -FileUri 'v1.0/files/1'
+            }
+            @($script:Puts | Where-Object { $_.Uri -like '*&comp=blocklist' }).Count | Should -Be 2
+        }
+
+        It 'Retries a request that failed without an HTTP response' {
+            $script:Failures.Enqueue('timeout')
+            InModuleScope tcs.intune.packaging -Parameters @{ Path = $script:UploadFile; SasUri = $script:SasUri } {
+                Send-IntuneContentFile -Path $Path -SasUri $SasUri -FileUri 'v1.0/files/1'
+            }
+            @($script:Puts | Where-Object { $_.Uri -like '*&comp=block&*' }).Count | Should -Be 2
+        }
+
+        It 'Waits for the Retry-After of HTTP 429 when it is longer than the backoff' {
+            $script:Failures.Enqueue(@{ StatusCode = 429; RetryAfter = '7' })
+            InModuleScope tcs.intune.packaging -Parameters @{ Path = $script:UploadFile; SasUri = $script:SasUri } {
+                Send-IntuneContentFile -Path $Path -SasUri $SasUri -FileUri 'v1.0/files/1'
+            }
+            Should -Invoke -ModuleName tcs.core Start-Sleep -Times 1 -Exactly -ParameterFilter { $Milliseconds -eq 7000 }
+        }
+
+        It 'Does not retry HTTP 400' {
+            $script:Failures.Enqueue(400)
+            {
+                InModuleScope tcs.intune.packaging -Parameters @{ Path = $script:UploadFile; SasUri = $script:SasUri } {
+                    Send-IntuneContentFile -Path $Path -SasUri $SasUri -FileUri 'v1.0/files/1'
+                }
+            } | Should -Throw '*(400)*'
+            $script:Puts.Count | Should -Be 1
+            Should -Invoke -ModuleName tcs.core Start-Sleep -Times 0 -Exactly
+        }
+
+        It 'Gives up after 3 attempts and throws the last error' {
+            1..3 | ForEach-Object { $script:Failures.Enqueue(503) }
+            {
+                InModuleScope tcs.intune.packaging -Parameters @{ Path = $script:UploadFile; SasUri = $script:SasUri } {
+                    Send-IntuneContentFile -Path $Path -SasUri $SasUri -FileUri 'v1.0/files/1'
+                }
+            } | Should -Throw '*(503)*'
+            $script:Puts.Count | Should -Be 3
+            @($script:Puts | Where-Object { $_.Uri -like '*&comp=blocklist' }).Count | Should -Be 0
+            Should -Invoke -ModuleName tcs.core Start-Sleep -Times 2 -Exactly
+            Should -Invoke -ModuleName tcs.core Start-Sleep -Times 1 -Exactly -ParameterFilter { $Milliseconds -eq 2000 }
+            Should -Invoke -ModuleName tcs.core Start-Sleep -Times 1 -Exactly -ParameterFilter { $Milliseconds -eq 4000 }
+        }
+    }
+
     Context 'Wait-IntuneContentFileState' {
         BeforeEach {
             Mock -ModuleName tcs.intune.packaging Start-Sleep { }

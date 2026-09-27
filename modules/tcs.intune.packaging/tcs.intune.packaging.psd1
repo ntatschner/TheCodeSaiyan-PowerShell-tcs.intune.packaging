@@ -1,6 +1,6 @@
 @{
     RootModule           = 'tcs.intune.packaging.psm1'
-    ModuleVersion        = '0.5.0'
+    ModuleVersion        = '0.6.0'
     CompatiblePSEditions = @('Desktop', 'Core')
     GUID                 = 'bfe12388-5f86-4da1-b08b-a439ff6f690c'
     Author               = 'Nigel Tatschner'
@@ -9,7 +9,7 @@
     Description          = 'Windows-only functions to build, package and deploy application and configuration packages for Microsoft Intune (Win32 apps, .intunewin packages and APF installer templates).'
     PowerShellVersion    = '5.1'
     RequiredModules      = @(
-        @{ ModuleName = 'tcs.core'; ModuleVersion = '0.3.0' }
+        @{ ModuleName = 'tcs.core'; ModuleVersion = '0.4.0' }
     )
     FunctionsToExport    = @(
         'Add-IntuneWin32AppDependency',

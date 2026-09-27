@@ -47,18 +47,15 @@ function Get-MSIProperty {
         [Alias('Filename', 'MSIDbName', 'Database', 'Msi', 'FullName')]
         [string]$Path
     )
+    begin {
+        $telemetry = Start-TcsTelemetry
+        $lastError = $null
+    }
     process {
-        $TelemetryArgs = @{
-            ModuleName    = $MyInvocation.MyCommand.Module.Name
-            ModuleVersion = [string]$MyInvocation.MyCommand.Module.Version
-            CommandName   = $MyInvocation.MyCommand.Name
-            ExecutionID   = [guid]::NewGuid().ToString()
-        }
-        Invoke-TelemetryCollection @TelemetryArgs -Stage Start -ClearTimer
-
         $WindowsInstaller = $null
         $Database = $null
         $View = $null
+        $completed = $false
         try {
             $FullPath = (Get-Item -Path $Path -ErrorAction Stop).FullName
             $WindowsInstaller = New-Object -ComObject WindowsInstaller.Installer -ErrorAction Stop
@@ -78,11 +75,13 @@ function Get-MSIProperty {
             $null = $View.GetType().InvokeMember('Close', 'InvokeMethod', $null, $View, $null)
 
             [PSCustomObject]$Results
-            Invoke-TelemetryCollection @TelemetryArgs -Stage End
+            $completed = $true
         }
         catch {
-            Invoke-TelemetryCollection @TelemetryArgs -Stage End -Failed $true -Exception $_
+            $lastError = $_
             Write-Error -Message "Failed to read the MSI database '$Path': $($_.Exception.Message)" -Exception $_.Exception
+            # The error was written (it is reported in end); the next item is processed as usual
+            $completed = $true
         }
         finally {
             # Release the COM objects so the MSI file is not left locked
@@ -91,6 +90,12 @@ function Get-MSIProperty {
                     $null = [System.Runtime.InteropServices.Marshal]::ReleaseComObject($ComObject)
                 }
             }
+            if (-not $completed) {
+                Complete-TcsTelemetry -Token $telemetry -ErrorRecord $lastError
+            }
         }
+    }
+    end {
+        Complete-TcsTelemetry -Token $telemetry -ErrorRecord $lastError
     }
 }

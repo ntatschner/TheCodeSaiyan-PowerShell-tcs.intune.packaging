@@ -53,24 +53,18 @@ function Add-IntuneWin32AppDependency {
         [string]$DependencyType = 'autoInstall'
     )
     begin {
-        $TelemetryArgs = @{
-            ModuleName    = $MyInvocation.MyCommand.Module.Name
-            ModuleVersion = [string]$MyInvocation.MyCommand.Module.Version
-            CommandName   = $MyInvocation.MyCommand.Name
-            ExecutionID   = [guid]::NewGuid().ToString()
-        }
-        Invoke-TelemetryCollection @TelemetryArgs -Stage Start -ClearTimer
-        $TelemetryFailed = $false
+        $telemetry = Start-TcsTelemetry
+        $lastError = $null
         try {
             $null = Assert-MgGraphConnection
         }
         catch {
-            $TelemetryFailed = $true
-            Invoke-TelemetryCollection @TelemetryArgs -Stage End -Failed $true -Exception $_
+            Complete-TcsTelemetry -Token $telemetry -ErrorRecord $_
             $PSCmdlet.ThrowTerminatingError($_)
         }
     }
     process {
+        $completed = $false
         try {
             if ($DependsOnAppId -contains $Id) {
                 throw 'An app cannot depend on itself.'
@@ -85,18 +79,19 @@ function Add-IntuneWin32AppDependency {
             if ($PSCmdlet.ShouldProcess($Id, "Add dependency ($DependencyType) on $($DependsOnAppId -join ', ')")) {
                 Set-IntuneAppRelationship -AppId $Id -Relationship $Relationships
             }
+            $completed = $true
         }
         catch {
-            if (-not $TelemetryFailed) {
-                $TelemetryFailed = $true
-                Invoke-TelemetryCollection @TelemetryArgs -Stage End -Failed $true -Exception $_
-            }
+            $lastError = $_
             $PSCmdlet.ThrowTerminatingError($_)
+        }
+        finally {
+            if (-not $completed) {
+                Complete-TcsTelemetry -Token $telemetry -ErrorRecord $lastError
+            }
         }
     }
     end {
-        if (-not $TelemetryFailed) {
-            Invoke-TelemetryCollection @TelemetryArgs -Stage End
-        }
+        Complete-TcsTelemetry -Token $telemetry -ErrorRecord $lastError
     }
 }

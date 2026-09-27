@@ -79,16 +79,11 @@ function New-IntuneWin32AppPackage {
         [switch]$AllowDownload
     )
     begin {
-        $TelemetryArgs = @{
-            ModuleName    = $MyInvocation.MyCommand.Module.Name
-            ModuleVersion = [string]$MyInvocation.MyCommand.Module.Version
-            CommandName   = $MyInvocation.MyCommand.Name
-            ExecutionID   = [guid]::NewGuid().ToString()
-        }
-        Invoke-TelemetryCollection @TelemetryArgs -Stage Start -ClearTimer
-        $TelemetryFailed = $false
+        $telemetry = Start-TcsTelemetry
+        $lastError = $null
     }
     process {
+        $completed = $false
         try {
             if (-not (Test-Path -LiteralPath $SourceFolder -PathType Container)) {
                 throw "Unable to detect specified source folder: $SourceFolder"
@@ -106,14 +101,14 @@ function New-IntuneWin32AppPackage {
                 # The package is skipped, but other pipeline input is still processed
                 $Exception = [System.IO.IOException]::new("The package '$IntuneWinAppPackage' already exists. Use -Force to overwrite it.")
                 $Record = [System.Management.Automation.ErrorRecord]::new($Exception, 'PackageExists', [System.Management.Automation.ErrorCategory]::ResourceExists, $IntuneWinAppPackage)
-                if (-not $TelemetryFailed) {
-                    $TelemetryFailed = $true
-                    Invoke-TelemetryCollection @TelemetryArgs -Stage End -Failed $true -Exception $Record
-                }
+                $lastError = $Record
                 $PSCmdlet.WriteError($Record)
+                # The error was written (it is reported in end); the next item is processed as usual
+                $completed = $true
                 return
             }
             if (-not $PSCmdlet.ShouldProcess($IntuneWinAppPackage, 'Create .intunewin package')) {
+                $completed = $true
                 return
             }
 
@@ -136,18 +131,19 @@ function New-IntuneWin32AppPackage {
                 UnencryptedContentSize = $Info.UnencryptedContentSize
                 Path                   = $Package.FullName
             }
+            $completed = $true
         }
         catch {
-            if (-not $TelemetryFailed) {
-                $TelemetryFailed = $true
-                Invoke-TelemetryCollection @TelemetryArgs -Stage End -Failed $true -Exception $_
-            }
+            $lastError = $_
             $PSCmdlet.ThrowTerminatingError($_)
+        }
+        finally {
+            if (-not $completed) {
+                Complete-TcsTelemetry -Token $telemetry -ErrorRecord $lastError
+            }
         }
     }
     end {
-        if (-not $TelemetryFailed) {
-            Invoke-TelemetryCollection @TelemetryArgs -Stage End
-        }
+        Complete-TcsTelemetry -Token $telemetry -ErrorRecord $lastError
     }
 }

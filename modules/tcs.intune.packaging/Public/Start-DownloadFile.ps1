@@ -50,20 +50,16 @@ function Start-DownloadFile {
         [string]$Name
     )
     begin {
-        $TelemetryArgs = @{
-            ModuleName    = $MyInvocation.MyCommand.Module.Name
-            ModuleVersion = [string]$MyInvocation.MyCommand.Module.Version
-            CommandName   = $MyInvocation.MyCommand.Name
-            ExecutionID   = [guid]::NewGuid().ToString()
-        }
-        Invoke-TelemetryCollection @TelemetryArgs -Stage Start -ClearTimer
-        $TelemetryFailed = $false
+        $telemetry = Start-TcsTelemetry
+        $lastError = $null
         Write-Warning 'Start-DownloadFile is deprecated and may be removed in a future version. Use Invoke-WebRequest -OutFile instead.'
     }
     process {
+        $completed = $false
         try {
             $Destination = Join-Path -Path $Path -ChildPath $Name
             if (-not $PSCmdlet.ShouldProcess($Destination, "Download $URL")) {
+                $completed = $true
                 return
             }
             if (-not (Test-Path -Path $Path -PathType Container)) {
@@ -78,18 +74,19 @@ function Start-DownloadFile {
                 }
                 throw "Failed to download '$URL' to '$Destination': $($_.Exception.Message)"
             }
+            $completed = $true
         }
         catch {
-            if (-not $TelemetryFailed) {
-                $TelemetryFailed = $true
-                Invoke-TelemetryCollection @TelemetryArgs -Stage End -Failed $true -Exception $_
-            }
+            $lastError = $_
             throw
+        }
+        finally {
+            if (-not $completed) {
+                Complete-TcsTelemetry -Token $telemetry -ErrorRecord $lastError
+            }
         }
     }
     end {
-        if (-not $TelemetryFailed) {
-            Invoke-TelemetryCollection @TelemetryArgs -Stage End
-        }
+        Complete-TcsTelemetry -Token $telemetry -ErrorRecord $lastError
     }
 }

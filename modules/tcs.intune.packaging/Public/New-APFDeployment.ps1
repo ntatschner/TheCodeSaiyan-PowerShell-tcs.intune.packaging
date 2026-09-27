@@ -128,15 +128,12 @@ function New-APFDeployment {
         [Parameter(HelpMessage = "Create a Intune package for the application. Default is false.")]
         [switch]$CreateIntuneWinPackage
     )
+    begin {
+        $telemetry = Start-TcsTelemetry
+        $lastError = $null
+    }
     process {
-        $TelemetryArgs = @{
-            ModuleName    = $MyInvocation.MyCommand.Module.Name
-            ModuleVersion = [string]$MyInvocation.MyCommand.Module.Version
-            CommandName   = $MyInvocation.MyCommand.Name
-            ExecutionID   = [guid]::NewGuid().ToString()
-        }
-        Invoke-TelemetryCollection @TelemetryArgs -Stage Start -ClearTimer
-
+        $completed = $false
         try {
             $InstallerFile = Get-Item -Path $Path -ErrorAction Stop
             if ($InstallerFile.Extension -eq '.msi') {
@@ -171,13 +168,13 @@ function New-APFDeployment {
             # Create the application folder; Name is validated and the folder must be a subfolder of DestinationFolder
             $AppFolder = Get-PackageFolderPath -DestinationFolder $DestinationFolder -Name $Name
             if (-not $PSCmdlet.ShouldProcess($AppFolder, 'Create APF deployment package')) {
-                Invoke-TelemetryCollection @TelemetryArgs -Stage End
+                $completed = $true
                 return
             }
             if (Test-Path -LiteralPath $AppFolder) {
                 if (-not (Confirm-FolderOverwrite -Path $AppFolder)) {
                     Write-Warning "The folder '$AppFolder' already exists and was not changed."
-                    Invoke-TelemetryCollection @TelemetryArgs -Stage End
+                    $completed = $true
                     return
                 }
                 Remove-Item -LiteralPath $AppFolder -Recurse -Force -ErrorAction Stop
@@ -219,11 +216,21 @@ function New-APFDeployment {
             }
             $CommandLine = Get-APFCommandLine
             Write-Output "When publishing the application to Intune, use`n'$($CommandLine.InstallCommand)' for the install command and`n'$($CommandLine.UninstallCommand)' for the uninstall command."
-            Invoke-TelemetryCollection @TelemetryArgs -Stage End
+            $completed = $true
         }
         catch {
-            Invoke-TelemetryCollection @TelemetryArgs -Stage End -Failed $true -Exception $_
+            $lastError = $_
             Write-Error -Message "Failed to package application: $($_.Exception.Message)" -Exception $_.Exception
+            # The error was written (it is reported in end); the next item is processed as usual
+            $completed = $true
         }
+        finally {
+            if (-not $completed) {
+                Complete-TcsTelemetry -Token $telemetry -ErrorRecord $lastError
+            }
+        }
+    }
+    end {
+        Complete-TcsTelemetry -Token $telemetry -ErrorRecord $lastError
     }
 }

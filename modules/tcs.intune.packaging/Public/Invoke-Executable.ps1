@@ -71,13 +71,7 @@ function Invoke-Executable {
         [parameter(Mandatory = $false, HelpMessage = "Specify whether to use the operating system shell to start the process.")]
         [bool]$UseShellExecute = $false
     )
-    $TelemetryArgs = @{
-        ModuleName    = $MyInvocation.MyCommand.Module.Name
-        ModuleVersion = [string]$MyInvocation.MyCommand.Module.Version
-        CommandName   = $MyInvocation.MyCommand.Name
-        ExecutionID   = [guid]::NewGuid().ToString()
-    }
-    Invoke-TelemetryCollection @TelemetryArgs -Stage Start -ClearTimer
+    $telemetry = Start-TcsTelemetry
     try {
         if ($UseShellExecute -and ($RedirectStandardOutput -or $RedirectStandardError)) {
             throw 'RedirectStandardOutput and RedirectStandardError must be $false when UseShellExecute is $true.'
@@ -124,10 +118,12 @@ function Invoke-Executable {
         finally {
             $Process.Dispose()
         }
-        Invoke-TelemetryCollection @TelemetryArgs -Stage End
     }
     catch {
-        Invoke-TelemetryCollection @TelemetryArgs -Stage End -Failed $true -Exception $_
+        Complete-TcsTelemetry -Token $telemetry -ErrorRecord $_
         throw
+    }
+    finally {
+        Complete-TcsTelemetry -Token $telemetry
     }
 }
