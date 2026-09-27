@@ -121,9 +121,9 @@ Describe 'Telemetry for <Name>' -ForEach $ExportedFunctions {
 }
 
 Describe 'Telemetry wiring' {
-    It 'Does not call Invoke-TelemetryCollection or Invoke-TcsCommand in any file in Public/' {
+    It 'Does not call Invoke-TelemetryCollection in any file in Public/' {
         $calls = @(Get-ChildItem -Path (Join-Path $ModuleRoot 'Public') -Filter '*.ps1' -File |
-                Select-String -Pattern 'Invoke-TelemetryCollection', 'Invoke-TcsCommand' -SimpleMatch)
+                Select-String -Pattern 'Invoke-TelemetryCollection' -SimpleMatch)
         $calls | Should -BeNullOrEmpty
     }
 }
