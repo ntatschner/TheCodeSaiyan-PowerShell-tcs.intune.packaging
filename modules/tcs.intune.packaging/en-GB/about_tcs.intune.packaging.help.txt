@@ -12,7 +12,7 @@ LONG DESCRIPTION
     groups used to deploy an application.
 
     The module needs Windows (Windows PowerShell 5.1 or PowerShell 7) and
-    tcs.core 0.3.0 or later. Commands that talk to Entra ID or Intune also
+    tcs.core 0.4.0 or later. Commands that talk to Entra ID or Intune also
     need the Microsoft.Entra or Microsoft.Graph.Authentication modules.
 
     APF packages are built from the installer scripts in the module's
@@ -54,7 +54,9 @@ NOTE
     OS version and a random installation ID). No user, machine, path or error
     text is sent. Nothing is sent until a TelemetryUri is configured. Turn it
     off with -Telemetry $false or the TCS_TELEMETRY_OPTOUT=1 environment
-    variable.
+    variable. One event is sent per run: a pipeline is one run, and when a
+    command calls another command of this module only the outer one is
+    reported.
 
     Publish-IntuneAppPackage and New-IntuneWin32Application create Win32 apps
     in Intune and upload their content with Microsoft Graph.
@@ -65,6 +67,11 @@ NOTE
     Remove-IntuneWin32App, Add-IntuneWin32AppSupersedence and
     Add-IntuneWin32AppDependency manage existing Win32 apps. Connect first
     with Connect-MgGraph -Scopes DeviceManagementApps.ReadWrite.All.
+
+    The content is uploaded to Azure Storage in blocks. Each block, and the
+    final block list, is retried on HTTP 429, 500 and 503 and on errors
+    without a response (such as timeouts): up to 3 attempts, 2 and then 4
+    seconds apart, or longer when the server sends Retry-After.
 
     Set-ScriptSignature signs scripts; ConvertTo-SignedScript is an alias for
     it. New-PackageJSON and Start-DownloadFile are deprecated.

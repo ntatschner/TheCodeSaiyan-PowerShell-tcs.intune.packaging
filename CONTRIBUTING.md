@@ -5,11 +5,11 @@ tcs.intune.packaging builds on [tcs.core](https://github.com/ntatschner/TheCodeS
 
 ## Getting started
 
-Requirements: Windows with Windows PowerShell 5.1 or PowerShell 7, tcs.core 0.3.0 or later,
+Requirements: Windows with Windows PowerShell 5.1 or PowerShell 7, tcs.core 0.4.0 or later,
 Pester 5.7.1 and PSScriptAnalyzer 1.23.0.
 
 ```powershell
-Install-Module tcs.core -MinimumVersion 0.3.0 -Scope CurrentUser
+Install-Module tcs.core -MinimumVersion 0.4.0 -Scope CurrentUser
 Install-Module Pester -RequiredVersion 5.7.1 -Scope CurrentUser -SkipPublisherCheck
 Install-Module PSScriptAnalyzer -RequiredVersion 1.23.0 -Scope CurrentUser
 
@@ -49,6 +49,11 @@ Every file in `Public/` (top level only) must also be listed in `FunctionsToExpo
 - **Tests:** new behaviour and bug fixes come with Pester tests. Tests must not touch the real
   user profile, Intune or the network: set `TCS_CONFIG_ROOT` to `$TestDrive` and mock external calls
   (`Mock -ModuleName tcs.intune.packaging`).
+- **Telemetry:** every exported command reports its run with `Start-TcsTelemetry` and
+  `Complete-TcsTelemetry` (tcs.core), keeping the command body inline. Commands without a process
+  block complete the run in `finally` (and with `-ErrorRecord $_` in `catch`); pipeline commands
+  start it in `begin`, complete it in `end`, and complete it in the process block's `finally` when an
+  item did not finish normally. `tests/Module.Tests.ps1` checks this.
 - **Templates:** the scripts in `Public/Templates` run on managed devices. Keep them compatible with
   Windows PowerShell 5.1 and keep `config.installer.json` keys in step with `New-APFDeployment`
   and `New-APFConfigDeployment`.

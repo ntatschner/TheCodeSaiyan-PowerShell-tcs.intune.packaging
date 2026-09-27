@@ -7,6 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-09-27
+
+### Added
+- Content uploads retry transient Azure Storage errors. Each block upload (Put Block) and the final
+  block list (Put Block List) made by `New-IntuneWin32Application` and `Publish-IntuneAppPackage` is
+  retried with tcs.core's `Invoke-WithRetry`: up to 3 attempts, 2 and then 4 seconds apart (longer
+  when the server sends `Retry-After`), for HTTP 429, 500 and 503 and for errors without a response
+  such as timeouts and dropped connections. Other HTTP errors (for example 400 or 403) stop the upload
+  at once, and after the last attempt the original error is thrown as before. The block is re-sent
+  from the same bytes and the SAS URI renewal is unchanged. Microsoft Graph requests are not wrapped;
+  the Microsoft Graph SDK retries them itself.
+
+### Changed
+- Requires tcs.core 0.4.0 or later.
+- Telemetry uses the tcs.core 0.4.0 helpers `Start-TcsTelemetry` and `Complete-TcsTelemetry` instead
+  of a copy of the `Invoke-TelemetryCollection` Start/End block in every command. Command bodies,
+  output, errors, warnings and `-WhatIf` handling are unchanged.
+- When a command calls another command of this module, only the outer command is reported (for
+  example `Publish-IntuneAppPackage` is reported, not the `New-IntuneWin32Application` it runs, and
+  `New-IntuneApplication -Publish` is reported, not `Publish-IntuneAppPackage`).
+- `Get-MSIProperty`, `New-APFDeployment`, `New-APFConfigDeployment`, `New-IntuneWin32Application`
+  and `Publish-IntuneAppPackage` report one event per pipeline run instead of one per input object,
+  like the other pipeline commands. A pipeline that a later command stops early (for example
+  `Select-Object -First 1`) is now reported as completed; before, no End event was sent.
+- `New-IntuneWin32Application` reports a failed run when it is not connected to Microsoft Graph;
+  before, that check was not reported.
+
 ## [0.5.0] - 2026-09-24
 
 ### Security
