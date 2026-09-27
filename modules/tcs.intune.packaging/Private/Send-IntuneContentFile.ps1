@@ -11,6 +11,12 @@ function Send-IntuneContentFile {
         Block IDs are Base64 strings of equal length. When RenewAfterSeconds have passed, the SAS URI
         is renewed with the renewUpload action
         (https://learn.microsoft.com/graph/api/intune-apps-mobileappcontentfile-renewupload).
+
+        Each Put Block and the Put Block List request is retried with Invoke-WithRetry (tcs.core):
+        up to 3 attempts, after 2 and then 4 seconds (or the server's Retry-After, if longer), for
+        HTTP 429, 500 and 503 and for errors without an HTTP response such as timeouts and dropped
+        connections. Other HTTP errors are thrown at once. A block is held in a byte array, so the
+        same bytes are sent again on a retry.
     #>
     [CmdletBinding()]
     [OutputType([void])]
@@ -33,6 +39,13 @@ function Send-IntuneContentFile {
     )
 
     $ChunkSize = $ChunkSizeMB * 1024 * 1024
+    # Transient Azure Storage errors: 3 attempts per request, 2 and 4 seconds apart (Retry-After is honoured)
+    $RetryParameters = @{
+        MaxRetries        = 2
+        RetryOnStatusCode = 429, 500, 503
+        DelaySeconds      = 2
+        BackoffMultiplier = 2
+    }
     $BlockIds = New-Object -TypeName System.Collections.Generic.List[string]
     $Timer = [System.Diagnostics.Stopwatch]::StartNew()
     $Stream = [System.IO.File]::OpenRead($Path)
@@ -55,7 +68,10 @@ function Send-IntuneContentFile {
             }
             $BlockId = [System.Convert]::ToBase64String([System.Text.Encoding]::ASCII.GetBytes($Index.ToString('000000')))
             Write-Verbose "Uploading block $Index ($Read bytes)."
-            $null = Invoke-WebRequest -Method Put -Uri "$SasUri&comp=block&blockid=$([System.Uri]::EscapeDataString($BlockId))" -Body $Chunk -ContentType 'application/octet-stream' -UseBasicParsing -ErrorAction Stop
+            $BlockUri = "$SasUri&comp=block&blockid=$([System.Uri]::EscapeDataString($BlockId))"
+            $null = Invoke-WithRetry @RetryParameters -ScriptBlock {
+                Invoke-WebRequest -Method Put -Uri $BlockUri -Body $Chunk -ContentType 'application/octet-stream' -UseBasicParsing -ErrorAction Stop
+            }
             $BlockIds.Add($BlockId)
             $Index++
         }
@@ -65,5 +81,7 @@ function Send-IntuneContentFile {
     }
 
     $BlockList = '<?xml version="1.0" encoding="utf-8"?><BlockList>' + (($BlockIds | ForEach-Object { "<Latest>$_</Latest>" }) -join '') + '</BlockList>'
-    $null = Invoke-WebRequest -Method Put -Uri "$SasUri&comp=blocklist" -Body $BlockList -ContentType 'application/xml' -UseBasicParsing -ErrorAction Stop
+    $null = Invoke-WithRetry @RetryParameters -ScriptBlock {
+        Invoke-WebRequest -Method Put -Uri "$SasUri&comp=blocklist" -Body $BlockList -ContentType 'application/xml' -UseBasicParsing -ErrorAction Stop
+    }
 }
