@@ -38,7 +38,8 @@ Type:Object
 Parameter Sets:       (All)
 Aliases: Filename, MSIDbName, Database,Msi
 Required: True
-Position: 0DefaultDefault
+Position: 0Default
+Default value: None
 Default value: None
 Default value: None
 Default value: NoneDefaultDefault
