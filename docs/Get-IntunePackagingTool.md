@@ -14,20 +14,20 @@ Downloads the Microsoft Win32 Content Prep Tool (IntuneWinAppUtil.exe).
 
 ### Latest (Default)
 ```
-Get-IntunePackagingTool -Path <String> [-ExpectedSha256 <String>] [-Force] [-ProgressAction <ActionPreference>]
+Get-IntunePackagingTool -Path <String> [-ExpectedSha256 <String>] [-Force]
  [<CommonParameters>]
 ```
 
 ### DownloadTag
 ```
 Get-IntunePackagingTool -Path <String> -DownloadTag <String> [-ExpectedSha256 <String>] [-Force]
- [-ProgressAction <ActionPreference>] [<CommonParameters>]
+ [<CommonParameters>]
 ```
 
 ### DownloadUrl
 ```
 Get-IntunePackagingTool -Path <String> -DownloadUrl <String> [-ExpectedSha256 <String>] [-Force]
- [-ProgressAction <ActionPreference>] [<CommonParameters>]
+ [<CommonParameters>]
 ```
 
 ## DESCRIPTION
@@ -150,21 +150,6 @@ Aliases:
 Required: False
 Position: Named
 Default value: False
-Accept pipeline input: False
-Accept wildcard characters: False
-```
-
-### -ProgressAction
-{{ Fill ProgressAction Description }}
-
-```yaml
-Type: ActionPreference
-Parameter Sets: (All)
-Aliases: proga
-
-Required: False
-Position: Named
-Default value: None
 Accept pipeline input: False
 Accept wildcard characters: False
 ```

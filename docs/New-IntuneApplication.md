@@ -20,7 +20,7 @@ New-IntuneApplication [-ApplicationName] <String> [-SourceFiles] <String[]> [-Ma
  [-UninstallCommand] <String> [[-RequirementRuleConfig] <Hashtable>] [-DetectionRuleConfig] <Hashtable>
  [-AssignmentType] <String> [[-AssignmentGroup] <String>] [[-AssignmentIntent] <String>]
  [[-FilterRuleType] <String>] [[-FilterRule] <String>] [-Publish] [[-IntuneToolsPath] <String>]
- [-AllowDownload] [-Overwrite] [-NoJson] [-NoIntuneWin] [-NoCleanUp] [-ProgressAction <ActionPreference>]
+ [-AllowDownload] [-Overwrite] [-NoJson] [-NoIntuneWin] [-NoCleanUp]
  [-WhatIf] [-Confirm] [<CommonParameters>]
 ```
 
@@ -549,21 +549,6 @@ Prompts you for confirmation before running the cmdlet.
 Type: SwitchParameter
 Parameter Sets: (All)
 Aliases: cf
-
-Required: False
-Position: Named
-Default value: None
-Accept pipeline input: False
-Accept wildcard characters: False
-```
-
-### -ProgressAction
-{{ Fill ProgressAction Description }}
-
-```yaml
-Type: ActionPreference
-Parameter Sets: (All)
-Aliases: proga
 
 Required: False
 Position: Named

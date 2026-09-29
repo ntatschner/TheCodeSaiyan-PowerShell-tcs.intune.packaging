@@ -14,17 +14,17 @@ Gets Win32 apps from Microsoft Intune.
 
 ### All (Default)
 ```
-Get-IntuneWin32App [-ProgressAction <ActionPreference>] [<CommonParameters>]
+Get-IntuneWin32App [<CommonParameters>]
 ```
 
 ### Id
 ```
-Get-IntuneWin32App -Id <String> [-ProgressAction <ActionPreference>] [<CommonParameters>]
+Get-IntuneWin32App -Id <String> [<CommonParameters>]
 ```
 
 ### Name
 ```
-Get-IntuneWin32App -Name <String> [-ProgressAction <ActionPreference>] [<CommonParameters>]
+Get-IntuneWin32App -Name <String> [<CommonParameters>]
 ```
 
 ## DESCRIPTION
@@ -79,21 +79,6 @@ Parameter Sets: Name
 Aliases:
 
 Required: True
-Position: Named
-Default value: None
-Accept pipeline input: False
-Accept wildcard characters: False
-```
-
-### -ProgressAction
-{{ Fill ProgressAction Description }}
-
-```yaml
-Type: ActionPreference
-Parameter Sets: (All)
-Aliases: proga
-
-Required: False
 Position: Named
 Default value: None
 Accept pipeline input: False

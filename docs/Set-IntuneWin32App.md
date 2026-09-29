@@ -19,12 +19,12 @@ Set-IntuneWin32App -Id <String> [-Name <String>] [-Description <String>] [-Publi
  [-PrivacyInformationUrl <String>] [-InformationUrl <String>] [-IsFeatured <Boolean>]
  [-InstallCommandLine <String>] [-UninstallCommandLine <String>] [-InstallExperienceRunAsAccount <String>]
  [-InstallExperienceDeviceRestartBehavior <String>] [-Rules <Hashtable[]>] [-PassThru]
- [-ProgressAction <ActionPreference>] [-WhatIf] [-Confirm] [<CommonParameters>]
+ [-WhatIf] [-Confirm] [<CommonParameters>]
 ```
 
 ### Json
 ```
-Set-IntuneWin32App -Id <String> -JsonPath <String> [-PassThru] [-ProgressAction <ActionPreference>] [-WhatIf]
+Set-IntuneWin32App -Id <String> -JsonPath <String> [-PassThru] [-WhatIf]
  [-Confirm] [<CommonParameters>]
 ```
 
@@ -364,21 +364,6 @@ Prompts you for confirmation before running the cmdlet.
 Type: SwitchParameter
 Parameter Sets: (All)
 Aliases: cf
-
-Required: False
-Position: Named
-Default value: None
-Accept pipeline input: False
-Accept wildcard characters: False
-```
-
-### -ProgressAction
-{{ Fill ProgressAction Description }}
-
-```yaml
-Type: ActionPreference
-Parameter Sets: (All)
-Aliases: proga
 
 Required: False
 Position: Named

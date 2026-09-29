@@ -14,7 +14,7 @@ Creates a package JSON metadata file for an application deployment.
 
 ```
 New-PackageJSON [-PackageName] <String> [-Version] <String> [-Description] <String> [-Author] <String>
- [-SourceDirectory] <String> [-MainInstaller] <String> [-ProgressAction <ActionPreference>] [-WhatIf]
+ [-SourceDirectory] <String> [-MainInstaller] <String> [-WhatIf]
  [-Confirm] [<CommonParameters>]
 ```
 
@@ -153,21 +153,6 @@ Prompts you for confirmation before running the cmdlet.
 Type: SwitchParameter
 Parameter Sets: (All)
 Aliases: cf
-
-Required: False
-Position: Named
-Default value: None
-Accept pipeline input: False
-Accept wildcard characters: False
-```
-
-### -ProgressAction
-{{ Fill ProgressAction Description }}
-
-```yaml
-Type: ActionPreference
-Parameter Sets: (All)
-Aliases: proga
 
 Required: False
 Position: Named

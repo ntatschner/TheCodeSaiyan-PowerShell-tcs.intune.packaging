@@ -1,14 +1,14 @@
 ---
 Module Name: tcs.intune.packaging
-Module Guid: {{ Update Module Guid }}
-Download Help Link: {{ Update Download Link }}
-Help Version: {{ Update Help Version }}
-Locale: {{ Update Locale }}
+Module Guid: bfe12388-5f86-4da1-b08b-a439ff6f690c
+Download Help Link: https://thecodesaiyan.io/modules/tcs.intune.packaging/
+Help Version: 0.6.0
+Locale: en-GB
 ---
 
 # tcs.intune.packaging Module
 ## Description
-{{ Fill in the Description }}
+Windows-only functions to build, package and deploy application and configuration packages for Microsoft Intune (Win32 apps, .intunewin packages and APF installer templates).
 
 ## tcs.intune.packaging Cmdlets
 ### [ConvertTo-SignedScript](ConvertTo-SignedScript.md)

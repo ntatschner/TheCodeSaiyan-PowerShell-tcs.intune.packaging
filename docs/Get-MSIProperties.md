@@ -13,7 +13,7 @@ schema: 2.0.0
 ## SYNTAX
 
 ```
-Get-MSIProperties [-Path] <Object> [-ProgressAction <ActionPreference>] [<CommonParameters>]
+Get-MSIProperties [-Path] <Object> [<CommonParameters>]
 ```
 
 ## DESCRIPTION
@@ -53,35 +53,6 @@ input:False
 input:False
 input:FalseAcceptpipelineAcceptpipeline
 Accept pipeline input: True (ByPropertyName, ByValue)
-Accept wildcard characters: False
-Accept wildcard characters: False
-characters:FalseAcceptwildcardAcceptwildcard
-Accept wildcard characters: False
-```
-
-### -ProgressAction
-{{ Fill ProgressAction Description }}
-
-```yaml
-Type:ActionPreference
-Parameter Sets:       (All)
-Aliases:proga
-Required: False
-Position:Named
-Default value: None
-Default value: None
-Default value: NoneDefaultDefault
-Default value: NoneDefaultDefault
-Default value: NoneDefaultDefaultDefaultDefault
-Default value: NoneDefaultDefaultDefaultDefault
-Default value: None
-Accept pipeline input: False
-input:False
-input:False
-input:False
-input:False
-input:FalseAcceptpipelineAcceptpipeline
-Accept pipeline input: False
 Accept wildcard characters: False
 Accept wildcard characters: False
 characters:FalseAcceptwildcardAcceptwildcard

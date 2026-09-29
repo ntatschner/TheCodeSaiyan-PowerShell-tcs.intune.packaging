@@ -16,7 +16,7 @@ Publishes an Intune Win32 application package (.intunewin and its JSON configura
 Publish-IntuneAppPackage [-IntuneAppJSONPath] <String> [-IntuneWinPath] <String> [-Force] [-NoTenantDetails]
  [[-Rules] <Hashtable[]>] [[-PollIntervalSeconds] <Int32>] [[-TimeoutSeconds] <Int32>]
  [[-AssignmentType] <String>] [[-AssignmentGroup] <String>] [[-AssignmentIntent] <String>]
- [[-FilterRuleType] <String>] [[-FilterRule] <String>] [-NoAssignment] [-ProgressAction <ActionPreference>]
+ [[-FilterRuleType] <String>] [[-FilterRule] <String>] [-NoAssignment]
  [-WhatIf] [-Confirm] [<CommonParameters>]
 ```
 
@@ -307,21 +307,6 @@ Prompts you for confirmation before running the cmdlet.
 Type: SwitchParameter
 Parameter Sets: (All)
 Aliases: cf
-
-Required: False
-Position: Named
-Default value: None
-Accept pipeline input: False
-Accept wildcard characters: False
-```
-
-### -ProgressAction
-{{ Fill ProgressAction Description }}
-
-```yaml
-Type: ActionPreference
-Parameter Sets: (All)
-Aliases: proga
 
 Required: False
 Position: Named

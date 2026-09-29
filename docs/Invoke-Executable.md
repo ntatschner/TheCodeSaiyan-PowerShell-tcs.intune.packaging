@@ -15,7 +15,7 @@ Runs an executable, waits for it to finish and returns its exit code and output.
 ```
 Invoke-Executable [-FilePath] <String> [[-Arguments] <String>] [[-RedirectStandardOutput] <Boolean>]
  [[-RedirectStandardError] <Boolean>] [[-CreateNoWindow] <Boolean>] [[-UseShellExecute] <Boolean>]
- [-ProgressAction <ActionPreference>] [<CommonParameters>]
+ [<CommonParameters>]
 ```
 
 ## DESCRIPTION
@@ -137,21 +137,6 @@ Aliases:
 Required: False
 Position: 6
 Default value: False
-Accept pipeline input: False
-Accept wildcard characters: False
-```
-
-### -ProgressAction
-{{ Fill ProgressAction Description }}
-
-```yaml
-Type: ActionPreference
-Parameter Sets: (All)
-Aliases: proga
-
-Required: False
-Position: Named
-Default value: None
 Accept pipeline input: False
 Accept wildcard characters: False
 ```

@@ -15,7 +15,7 @@ Creates an Application Packaging Framework (APF) deployment package for Intune.
 ```
 New-APFDeployment [[-Name] <String>] [[-Version] <Version>] [[-Target] <String>] [[-InstallSwitches] <String>]
  [[-UninstallSwitches] <String>] [[-UninstallPath] <String>] [-Path] <String> [[-IncludedFiles] <String[]>]
- [[-DestinationFolder] <String>] [-CreateIntuneWinPackage] [-ProgressAction <ActionPreference>] [-WhatIf]
+ [[-DestinationFolder] <String>] [-CreateIntuneWinPackage] [-WhatIf]
  [-Confirm] [<CommonParameters>]
 ```
 
@@ -237,21 +237,6 @@ Prompts you for confirmation before running the cmdlet.
 Type: SwitchParameter
 Parameter Sets: (All)
 Aliases: cf
-
-Required: False
-Position: Named
-Default value: None
-Accept pipeline input: False
-Accept wildcard characters: False
-```
-
-### -ProgressAction
-{{ Fill ProgressAction Description }}
-
-```yaml
-Type: ActionPreference
-Parameter Sets: (All)
-Aliases: proga
 
 Required: False
 Position: Named
